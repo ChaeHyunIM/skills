@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reorg Commits"
+  short_description: "Regroup a linear commit range by concern"
+  default_prompt: "Use $reorg-commits to reorganize a linear commit range."
