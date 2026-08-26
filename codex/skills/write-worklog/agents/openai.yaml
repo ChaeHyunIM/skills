@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Worklog"
+  short_description: "Turn a Codex task into a Korean engineering worklog"
+  default_prompt: "Use $write-worklog to document this Codex task."

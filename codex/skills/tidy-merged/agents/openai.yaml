@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tidy Merged"
+  short_description: "Safely remove merged agent worktrees and branches"
+  default_prompt: "Use $tidy-merged to clean up merged agent worktrees."
+policy:
+  allow_implicit_invocation: false
