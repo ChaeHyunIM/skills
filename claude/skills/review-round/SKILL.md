@@ -9,12 +9,13 @@ argument-hint: <issue-number> [/code-review args...]
 
 Runs **one review round** end to end on the PR from `implement` — one human input, no handoff in the middle.
 
-**Read `~/.claude/skills/agent-loop/CONTRACT.md` before starting** — labels, worktrees and the output
-convention live there and are not repeated here.
+**Read `~/.claude/skills/agent-loop/CONTRACT.md` before starting** — states, the tracker adapter,
+worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
+CONTRACT's [Tracker adapter] before the first tracker call.
 
 | | |
 |---|---|
-| Label transition | `agent-awaiting-review` → `agent-in-review` → `agent-awaiting-review` or `agent-blocked` |
+| State transition | `awaiting-review` → `in-review` → `awaiting-review` or `blocked` |
 | Deliverable | **one** PR comment. The chat report is a pointer, plus the 보류 section verbatim |
 | Never | review by itself (the engine is `/code-review`) · judge mergeability · run `ultra` |
 
@@ -25,7 +26,7 @@ Copy this into your response and check items off as you go.
 ```
 Round progress:
 - [ ] 1  Resolve PR and worktree, pin ROUND_BASE and REPO
-- [ ] 2  Claim the label, fix the round number
+- [ ] 2  Claim the state, fix the round number
 - [ ] 3  Fire the nested review in the background, arm the monitor, end the turn
 - [ ] 4  (on notification) Extract and sanity-check the findings
 - [ ] 5  Disposition findings → comment-cleaner → typecheck → commit → push
@@ -51,11 +52,11 @@ Round progress:
 ## 1. Pin the PR, worktree and round range
 
 ```bash
-gh pr list --search "Closes #<N>" --json number,url,headRefName
+"$TRACKER" pr-for <N>
 ```
 
-GitHub's search index lags for minutes after a PR is created. If it returns empty, fall back to
-`gh pr list --json number,headRefName` and match `agent/issue-<N>-*`.
+The adapter absorbs search-index lag and false full-text matches; an empty array means there really is
+no open PR — stop and say so.
 
 ```bash
 git -C <worktree> pull
@@ -67,10 +68,10 @@ Pin `ROUND_BASE` **right after the pull, before the review runs**. Everything co
 this round's work and everything below it is not. It is the only thing that makes [7]'s compare link point
 at this round alone.
 
-## 2. Claim the label, fix the round number
+## 2. Claim the state, fix the round number
 
 ```bash
-gh issue edit <N> --remove-label agent-awaiting-review --add-label agent-in-review
+"$TRACKER" transition <N> in-review
 ```
 
 Round number `<K>` = the highest existing "리뷰 라운드 K" in `gh pr view <PR> --json comments`, plus 1.
@@ -129,8 +130,8 @@ Structured shape:
   for deciding 반영 vs 기각.
 - `verdict` (CONFIRMED/PLAUSIBLE) exists only when a verify pass ran, i.e. `high` and above. At the
   default `medium` it is absent — do not hang the disposition on it.
-- **Exit 3, or a non-zero `.done`** → do not guess at findings. Report the failure, leave the label at
-  `agent-in-review`, and say what to retry. `.err` holds the stderr.
+- **Exit 3, or a non-zero `.done`** → do not guess at findings. Report the failure, leave the state at
+  `in-review`, and say what to retry. `.err` holds the stderr.
 
 ## 5. Disposition the findings
 
@@ -163,7 +164,7 @@ pnpm check-types:<app>
 ### Stop conditions
 
 - **Conflict** → resolve nothing; a wrong resolution is invisible to everyone downstream.
-  `git merge --abort`, land at `agent-blocked`, and say what collides. Resolution belongs to
+  `git merge --abort`, land at `blocked`, and say what collides. Resolution belongs to
   `/land`, where both sides' intents are read before any hunk is touched.
 - **Typecheck breaks** → fix, then follow CONTRACT's commit path again.
 - **Migrations on both sides** → the numbers never conflict as text, but the apply order does. Name the
@@ -194,14 +195,15 @@ quoting reliably:
 gh pr comment <PR> --body-file <scratchpad>/round-<N>-r<K>.md
 ```
 
-## 8. Land the label and stop
+## 8. Land the state and stop
 
-- **Any 보류, or a base conflict from [6]** → `agent-blocked`. The issue comment is a **pointer only**
-  (`리뷰 라운드 <K> 보류 <c>건 — <PR 코멘트 URL>`). Never restate the options there; two copies drift.
-- **Neither** → `agent-awaiting-review`.
+- **Any 보류, or a base conflict from [6]** → `blocked`. The ticket comment (`"$TRACKER" comment`) is a
+  **pointer only** (`리뷰 라운드 <K> 보류 <c>건 — <PR 코멘트 URL>`). Never restate the options there;
+  two copies drift.
+- **Neither** → `awaiting-review`.
 
 ```bash
-gh issue edit <N> --remove-label agent-in-review --add-label <agent-blocked|agent-awaiting-review>
+"$TRACKER" transition <N> <blocked|awaiting-review>
 ```
 
 The chat report is a **pointer, not a second write-up** — with one exception: **보류.** A 보류 item is a
@@ -227,13 +229,10 @@ Say this, then stop:
 - 보류 <c>건 (있을 때만) → 위 awk 로 뽑은 보류 섹션 그대로
 - 더 리뷰 → `/review-round <N>`
 - 더 수정 → `/implement <N>` with instructions
-- 만족하면 → attach the merge signature; `/land` merges the queue:
-  ```bash
-  gh issue edit <N> --remove-label agent-awaiting-review --add-label agent-merge-ready
-  ```
-  The label is the merge decision (CONTRACT); `/land` drains every labelled issue in order,
-  re-syncing each base and resolving conflicts on the way. Sign several rounds' worth and
-  fire `/land` once — draining in batch is what keeps the queue's bases from going stale one by one.
+- 만족하면 → `/land <N>` — the arguments are the merge signature (CONTRACT), and `/land` merges
+  them in order, re-syncing each base and resolving conflicts on the way. Collect several rounds'
+  worth and fire `/land <N> <M> ...` once — draining in batch is what keeps the queue's bases from
+  going stale one by one.
 
 ## TODO — 다른 런타임 대응
 

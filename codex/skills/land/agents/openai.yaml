@@ -1,6 +1,0 @@
-interface:
-  display_name: "Land"
-  short_description: "Drain the human-approved merge queue safely"
-  default_prompt: "Use $land to drain the agent-merge-ready queue."
-policy:
-  allow_implicit_invocation: false

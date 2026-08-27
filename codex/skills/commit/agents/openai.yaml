@@ -1,3 +1,0 @@
-interface:
-  display_name: "Commit"
-  short_description: "검토된 변경을 한국어 Conventional Commit으로 커밋"

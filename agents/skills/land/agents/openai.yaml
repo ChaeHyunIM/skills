@@ -1,0 +1,6 @@
+interface:
+  display_name: "Land"
+  short_description: "Safely merge only the tickets confirmed in this run"
+  default_prompt: "Use $land to merge the tracker tickets I name or confirm in this run."
+policy:
+  allow_implicit_invocation: false

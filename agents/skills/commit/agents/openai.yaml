@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit"
+  short_description: "검토된 변경을 한국어 Conventional Commit으로 커밋"
+  default_prompt: "Use $commit to review the current changes and create one safe local commit."
