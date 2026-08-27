@@ -20,7 +20,10 @@ GH_BIN="${GH_BIN:-/opt/homebrew/bin/gh}"
 JQ_BIN="${JQ_BIN:-/usr/bin/jq}"
 SQLITE_BIN="${SQLITE_BIN:-/usr/bin/sqlite3}"
 CODEX_STATE_ROOT="${CODEX_HOME:-$HOME/.codex}"
-CODEX_STATE_DB="$CODEX_STATE_ROOT/state_5.sqlite"
+if [[ -z "${CODEX_STATE_DB:-}" ]]; then
+  CODEX_STATE_DB="$(find "$CODEX_STATE_ROOT" -maxdepth 1 -type f -name 'state*.sqlite' -print 2>/dev/null |
+    sort -V | tail -1)"
+fi
 
 REPO=""
 INVOCATION_CWD="$(pwd -P)"
@@ -46,23 +49,38 @@ fi
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || { echo "repo 아님: $REPO" >&2; exit 2; }
 cd "$REPO" || exit 2
 
-WT_ROOT="$REPO/.claude/worktrees"
+WT_ROOTS=("$REPO/.agents/worktrees" "$REPO/.claude/worktrees")
 
 # 원격 상태가 낡으면 머지 판정이 통째로 틀어지므로 먼저 맞춘다
 git fetch --prune --quiet origin 2>/dev/null
 
-SESSIONS="$("$CLAUDE_BIN" agents --json --all --cwd "$REPO" 2>/dev/null)" || SESSIONS=""
-[[ -n "$SESSIONS" ]] || SESSIONS="[]"
+CLAUDE_STATUS_OK=1
+SESSIONS="[]"
+if command -v "$CLAUDE_BIN" >/dev/null 2>&1; then
+  if ! SESSIONS="$("$CLAUDE_BIN" agents --json --all --cwd "$REPO" 2>/dev/null)" ||
+     ! printf '%s' "$SESSIONS" | "$JQ_BIN" -e 'type == "array"' >/dev/null 2>&1; then
+    CLAUDE_STATUS_OK=0
+    SESSIONS="[]"
+  fi
+fi
 
 removed=0; skipped=0
 declare -a orphan_sessions=()
 declare -a reports=()
 
-# Codex 활성 task 수. DB 파일 자체가 없으면 이 머신에 Codex 상태가 없다는 뜻이라 0,
-# 있는데 못 읽으면 판정 불가라 -1 — 두 경우를 구분해야 Codex 미설치 머신이 전부 skip 되지 않는다.
+is_managed_worktree() {
+  local path="$1" root
+  for root in "${WT_ROOTS[@]}"; do
+    [[ "$path" == "$root"/* ]] && return 0
+  done
+  return 1
+}
+
+# Codex 활성 task 수. 상태 DB가 없으면 이 머신에 Codex task 상태가 없다는 뜻이라 0,
+# 있는데 못 읽거나 현재 스키마를 해석할 수 없으면 판정 불가라 -1이다.
 codex_busy_count() {
   local target="$1"
-  if [[ ! -e "$CODEX_STATE_DB" ]]; then
+  if [[ -z "$CODEX_STATE_DB" || ! -e "$CODEX_STATE_DB" ]]; then
     echo 0
     return 0
   fi
@@ -102,7 +120,7 @@ codex_busy_count() {
 judge() {
   local path="$1" br="$2"
   [[ -n "$path" && -n "$br" ]] || return 0
-  [[ "$path" == "$WT_ROOT"/* ]] || return 0
+  is_managed_worktree "$path" || return 0
 
   local pr pr_state merged_at head_oid
   pr="$("$GH_BIN" pr list --head "$br" --state all --limit 1 \
@@ -129,13 +147,15 @@ judge() {
     reports+=("$("$JQ_BIN" -n --arg branch "$br" --arg path "$path" --argjson pr "$pr" \
       --arg localHead "$local_head" --arg dirty "$dirty" --arg untracked "$untracked" \
       --argjson stashCount "${stash_count:-0}" --argjson busy "${busy:-0}" \
+      --argjson claudeStatusKnown "$CLAUDE_STATUS_OK" \
       --argjson codexBusy "${codex_busy:--1}" \
       --arg beyond "$beyond" --arg unpushed "$unpushed" \
       '{branch:$branch, path:$path, pr:$pr, localHead:$localHead,
         headMatchesPr:(($pr.headRefOid // "") != "" and $pr.headRefOid == $localHead),
         dirty:($dirty|split("\n")|map(select(length>0))),
         untracked:($untracked|split("\n")|map(select(length>0))),
-        stashCount:$stashCount, busyClaudeSessions:$busy, busyCodexTasks:$codexBusy,
+        stashCount:$stashCount, claudeStatusKnown:($claudeStatusKnown == 1),
+        busyClaudeSessions:$busy, busyCodexTasks:$codexBusy,
         beyondMergedSha:($beyond|split("\n")|map(select(length>0))),
         unpushed:($unpushed|split("\n")|map(select(length>0)))}')")
     return 0
@@ -156,6 +176,9 @@ judge() {
   if [[ "${stash_count:-0}" != "0" ]]; then
     echo "skip  $br — 이 브랜치의 stash 가 남아 있음"; ((skipped++)); return 0
   fi
+  if [[ "$CLAUDE_STATUS_OK" != "1" ]]; then
+    echo "skip  $br — Claude 활성 세션 상태를 확인할 수 없음"; ((skipped++)); return 0
+  fi
   if [[ "${busy:-0}" != "0" ]]; then
     echo "skip  $br — 이 워크트리에서 Claude 세션이 실행 중"; ((skipped++)); return 0
   fi
@@ -169,11 +192,6 @@ judge() {
     echo "skip  $br — 지금 이 스크립트가 실행된 작업 디렉터리"; ((skipped++)); return 0
   fi
 
-  while IFS= read -r line; do
-    [[ -n "$line" ]] && orphan_sessions+=("$line")
-  done < <(printf '%s' "$SESSIONS" | "$JQ_BIN" -r --arg p "$path" \
-    '.[] | select(.cwd == $p) | "  - \(.name)  pid=\(.pid)  status=\(.status // "-")"')
-
   if [[ "$DRY" == "1" ]]; then
     echo "dry   $br — 삭제 예정 (PR #$(printf '%s' "$pr" | "$JQ_BIN" -r '.number'))"
     ((removed++)); return 0
@@ -181,6 +199,10 @@ judge() {
 
   if git worktree remove "$path" 2>/dev/null; then
     git branch -D "$br" >/dev/null 2>&1
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && orphan_sessions+=("$line")
+    done < <(printf '%s' "$SESSIONS" | "$JQ_BIN" -r --arg p "$path" \
+      '.[] | select(.cwd == $p) | "  - \(.name)  pid=\(.pid)  status=\(.status // "-")"')
     echo "clean $br — 워크트리+브랜치 삭제"
     ((removed++))
   else
@@ -203,7 +225,9 @@ if [[ "$REPORT" == "1" ]]; then
   exit 0
 fi
 
-git worktree prune
+if [[ "$DRY" != "1" ]]; then
+  git worktree prune
+fi
 
 echo "---"
 echo "정리 $removed · 건너뜀 $skipped"
