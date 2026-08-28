@@ -258,7 +258,14 @@ case "$verb" in
     t=$(team)
     parent_input="{}"
     if [ -n "${TRACKER_PARENT:-}" ]; then
-      parent_input=$(jq -n --arg p "$(uuid_of "$TRACKER_PARENT")" '{parentId:$p}')
+      parent_uuid=$(uuid_of "$TRACKER_PARENT")
+      # Linear 는 하위 이슈에 부모의 프로젝트·담당자를 자동 상속하지 않는다 — 부모에 있으면 따라간다
+      parent_meta=$(gql 'query($id:String!){issue(id:$id){project{id} assignee{id}}}' \
+        "$(jq -n --arg id "$parent_uuid" '{id:$id}')" | jq '.data.issue')
+      parent_input=$(jq -n --arg p "$parent_uuid" --argjson m "$parent_meta" \
+        '{parentId:$p}
+         + (if $m.project then {projectId:$m.project.id} else {} end)
+         + (if $m.assignee then {assigneeId:$m.assignee.id} else {} end)')
     fi
     input=$(jq -n --arg t "$title" --rawfile d "$file" \
       --arg team "$(echo "$t" | jq -r .id)" \
