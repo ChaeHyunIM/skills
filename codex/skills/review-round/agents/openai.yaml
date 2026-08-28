@@ -1,0 +1,6 @@
+interface:
+  display_name: "Review Round"
+  short_description: "Run one dual-engine review round on an implement PR"
+  default_prompt: "Use $review-round to review the implement PR for the tracker ticket I name."
+policy:
+  allow_implicit_invocation: false

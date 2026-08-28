@@ -1,14 +1,12 @@
 ---
 name: review-round
-description: Runs one complete dual-engine code-review round on the PR that /implement opened — fires Anthropic's /code-review and a subscription-backed local Codex review against the same pinned head, applies or defers their findings once, syncs the PR with its base, and posts one Korean round-summary comment listing every finding as 반영·기각·보류. Use when the user invokes `/review-round <issue-number> [/code-review args...]`. Never merges; the human decides mergeability.
-disable-model-invocation: true
-argument-hint: <issue-number> [/code-review args...]
+description: Runs one human-fired dual-engine code-review round from Codex on an implement PR, using Claude /code-review and a subscription-backed nested Codex `$review-agent` against the same pinned head. Applies or defers findings once and posts one Korean summary. Use only when the user explicitly invokes `$review-round ISSUE_NUMBER [Claude review args...]`. Never merges.
 ---
 
 # review-round
 
 Runs **one review round** end to end on the PR from `implement` — one human input, two independent
-local review engines on the same pinned head, no handoff in the middle. The explicit `/review-round`
+local review engines on the same pinned head, no handoff in the middle. The explicit `$review-round`
 invocation authorizes exactly one nested Claude review and one nested Codex review. Both run read-only;
 only this outer loop applies findings and writes to GitHub.
 
@@ -30,8 +28,8 @@ Copy this into your response and check items off as you go.
 Round progress:
 - [ ] 1  Resolve PR and worktree, pin ROUND_BASE, BASE and REPO
 - [ ] 2  Claim the state, fix the round number
-- [ ] 3  Fire Claude and Codex on ROUND_BASE, arm the joint monitor, end the turn
-- [ ] 4  (on notification) Extract, sanity-check and deduplicate both finding lists
+- [ ] 3  Fire Claude and Codex on ROUND_BASE in one exec session, poll it to completion
+- [ ] 4  Extract, sanity-check and deduplicate both finding lists
 - [ ] 5  Disposition findings → comment-cleaner → typecheck → commit → push
 - [ ] 6  Sync with the base, then typecheck against the merged tree
 - [ ] 7  Compute the round range → write the PR comment
@@ -46,7 +44,9 @@ Round progress:
 - **Effort defaults to `medium`.** If the first forwarded argument is not one of
   `low`/`medium`/`high`/`xhigh`/`max`, prepend `medium`. Left off, `/code-review` inherits whatever
   `/effort` is set to, and it reads an unrecognized first token as the **review target path**.
-- **`ultra` stops the run.** Tell the user to type `/code-review ultra` themselves, then resume from [4].
+- **`ultra` stops the run.** `ultra` is Claude Code's cloud review mode; this Codex entrypoint can
+  neither fire it nor ingest its result. Start neither reviewer and tell the user to run
+  `/code-review ultra` from a Claude Code session — the Claude entrypoint owns that flow.
 - **`--fix` and `--comment` are refused.** Drop them from the forwarded string, say so, and continue —
   they duplicate or contradict work this skill already owns:
   - `--fix` applies findings inside [3], before [5] decides 반영·기각·보류. [5] fixes 반영 itself and
@@ -89,7 +89,7 @@ at this round alone.
 Round number `<K>` = the highest existing "리뷰 라운드 K" in `gh pr view <PR> --json comments`, plus 1.
 Default 1.
 
-## 3. Fire both review engines on `ROUND_BASE`
+## 3. Fire both review engines on `ROUND_BASE` in one Codex exec session
 
 Neither engine may write the branch while reviewing. Both must start after `ROUND_BASE` is pinned and
 before [5] changes any file.
@@ -107,63 +107,45 @@ bash ~/.agents/skills/agent-loop/review-round/scripts/codex-review.sh \
 
 If preflight fails, start neither reviewer. Leave the state at `in-review`, report the error and stop.
 
-### 3b. Fire Claude and Codex in the background, never inline
+### 3b. Create one scratchpad and start the joint runner
 
 `/code-review` carries `disable-model-invocation`, so the `Skill` tool cannot call it. That flag blocks
 only *the model calling itself*, not the CLI — `claude -p` takes the same slash-expansion path as a human
 keystroke and really runs the review.
 
-```bash
-Bash(run_in_background: true):
-  rm -f <scratchpad>/review-<N>-r<K>.done
-  cd <worktree> && { CLAUDE_CODE_REPORT_FINDINGS=1 claude -p '/code-review <args>' \
-    --output-format stream-json --verbose \
-    > <scratchpad>/review-<N>-r<K>.jsonl 2> <scratchpad>/review-<N>-r<K>.err; \
-    echo $? > <scratchpad>/review-<N>-r<K>.done; }
-```
-
-Start Codex as a second background process. `$review-agent` supplies the read-only defect-first review
-contract; `--output-schema` makes its final response directly consumable instead of scraping prose.
+The runner starts `claude -p` and `codex exec` as two child processes, writes their separate JSONL,
+result, stderr and `.done` artifacts, and waits for both. `$review-agent` supplies the nested Codex
+process's read-only defect-first contract.
 
 ```bash
-Bash(run_in_background: true):
-  rm -f <scratchpad>/codex-review-<N>-r<K>.done \
-    <scratchpad>/codex-review-<N>-r<K>.jsonl \
-    <scratchpad>/codex-review-<N>-r<K>.json \
-    <scratchpad>/codex-review-<N>-r<K>.err
-  { bash ~/.agents/skills/agent-loop/review-round/scripts/codex-review.sh run \
-      <worktree> "$COMPARISON_REF" "$ROUND_BASE" "$CODEX_MODEL" <normalized-effort> \
-      <scratchpad>/codex-review-<N>-r<K>.json \
-      > <scratchpad>/codex-review-<N>-r<K>.jsonl \
-      2> <scratchpad>/codex-review-<N>-r<K>.err; \
-    echo $? > <scratchpad>/codex-review-<N>-r<K>.done; }
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/review-round-<N>-r<K>.XXXXXX")
+bash ~/.agents/skills/agent-loop/review-round/scripts/run-reviewers.sh \
+  <worktree> <N> <K> "$COMPARISON_REF" "$ROUND_BASE" \
+  "$CODEX_MODEL" <normalized-effort> "$SCRATCH" <normalized-Claude-args...>
 ```
 
-- `<args>` is the effort-defaulted string from [Arguments], not the caller's raw tail.
-- **`run_in_background: true` is mandatory.** A real review can outlast the foreground Bash ceiling, and
-  the completion notification is what wakes [4].
+- `<normalized-Claude-args...>` is the effort-defaulted argument array from [Arguments], not the caller's
+  raw tail.
+- **Run the runner with escalated permissions, outside the sandbox.** The nested `claude` and
+  `codex exec` processes need network access to reach their models and write CLI state under `$HOME`;
+  the default workspace-write sandbox blocks both. The helper's `--sandbox read-only` only constrains
+  the nested reviewer's own shell commands — it does not open the network for the reviewer process.
 - **`--output-format stream-json --verbose` is mandatory too.** Default text mode writes nothing until
   exit, and `CLAUDE_CODE_REPORT_FINDINGS=1` only takes effect under this format.
 - Run both from the same worktree and pinned head. The Codex helper checks `HEAD` before and after its
-  review and fails if it moved.
-- Each `.done` holds one process exit code and is the monitor's stop signal. Remove every prior output
-  first, or a leftover from the previous round can masquerade as this round's result.
+  review; the joint runner checks it once more after both finish.
+- The runner exits `124` when the reviewers outrun `REVIEW_MAX_SECONDS` (default 3600s), after
+  terminating both. Treat that like any reviewer failure: report it and leave the state at `in-review`.
 
-### 3c. Arm the joint progress monitor
-
-```
-Monitor(description: "리뷰 #<N> 라운드 <K> 진행", timeout_ms: 3600000, persistent: false):
-  bash ~/.agents/skills/agent-loop/review-round/scripts/monitor.sh <N> <K> \
-    <scratchpad>/review-<N>-r<K>.jsonl <scratchpad>/review-<N>-r<K>.done \
-    <scratchpad>/codex-review-<N>-r<K>.jsonl <scratchpad>/codex-review-<N>-r<K>.done
-```
-
-The monitor exits after both local reviewers write a `.done` code. Then **end the turn and wait for the
-notification.** Do not poll, do not sleep-loop, do not start a second review.
+Run the command with `exec_command` and a short initial yield. If it returns a `session_id`, keep that
+exact session and call `write_stdin` with empty input and `yield_time_ms: 30000` until it exits. Send a
+brief commentary update between polls so the user is not left without progress. **Never launch the
+runner a second time while the first session exists.** The runner prints a joint digest every 30 seconds.
+Continue to [4] in the same turn when the session completes.
 
 ## 4. Extract, sanity-check and combine the findings
 
-Entered when the background command completes.
+Entered when the joint runner completes.
 
 ```bash
 CLAUDE_FINDINGS=$(bash ~/.agents/skills/agent-loop/review-round/scripts/extract-findings.sh \
@@ -208,8 +190,8 @@ Write the combined list to `<scratchpad>/review-<N>-r<K>.findings.json` before d
 each disposition there as you go. The Claude and Codex scratchpad outputs are engine evidence; the
 combined file is the round's sole working copy and [7]'s input.
 
-If anything changed, follow CONTRACT's commit path: `/comment-cleaner` → `pnpm check-types:<app>` →
-`/commit` → `git push`.
+If anything changed, follow CONTRACT's commit path: `$comment-cleaner` → `pnpm check-types:<app>` →
+`$commit` → `git push`.
 
 ## 6. Sync with the base, then typecheck against it
 
@@ -228,7 +210,7 @@ pnpm check-types:<app>
 
 - **Conflict** → resolve nothing; a wrong resolution is invisible to everyone downstream.
   `git merge --abort`, land at `blocked`, and say what collides. Resolution belongs to
-  `/land`, where both sides' intents are read before any hunk is touched.
+  `$land`, where both sides' intents are read before any hunk is touched.
 - **Typecheck breaks** → fix, then follow CONTRACT's commit path again.
 - **Migrations on both sides** → the numbers never conflict as text, but the apply order does. Name the
   colliding **files**, not the commits that introduced them.
@@ -282,25 +264,25 @@ awk '/^### 보류/{f=1} f && /^### / && !/^### 보류/{exit} f' <scratchpad>/rou
 
 보류 0건이면 아무것도 덧붙이지 않는다 — 코멘트의 `보류 없음` 한 줄로 충분하다.
 
-Still **do not use `AskUserQuestion`** for them, and do not add analysis, extra options or a recommendation
-that is not already in the comment. The decision comes back as the next `/implement <N>` instruction, not
+Still **do not open a blocking user-input dialog** for them, and do not add analysis, extra options or a
+recommendation that is not already in the comment. The decision comes back as the next `$implement <N>` instruction, not
 as a blocking dialog.
 
 Say this, then stop:
 
 - 라운드 결과 → `<PR 코멘트 URL>` (지적 n · 반영 a · 기각 b · 보류 c)
 - 보류 <c>건 (있을 때만) → 위 awk 로 뽑은 보류 섹션 그대로
-- 더 리뷰 → `/review-round <N>`
-- 더 수정 → `/implement <N>` with instructions
-- 만족하면 → `/land <N>` — the arguments are the merge signature (CONTRACT), and `/land` merges
+- 더 리뷰 → `$review-round <N>`
+- 더 수정 → `$implement <N>` with instructions
+- 만족하면 → `$land <N>` — the arguments are the merge signature (CONTRACT), and `$land` merges
   them in order, re-syncing each base and resolving conflicts on the way. Collect several rounds'
-  worth and fire `/land <N> <M> ...` once — draining in batch is what keeps the queue's bases from
+  worth and fire `$land <N> <M> ...` once — draining in batch is what keeps the queue's bases from
   going stale one by one.
 
 ## Runtime boundary
 
-This Claude entrypoint owns its outer state machine through Claude's background Bash and Monitor
-notification. A Codex-native sibling at `~/.codex/skills/review-round/SKILL.md` owns the same round
-when the human invokes `$review-round` from Codex. Both entrypoints share the deterministic helpers and
-comment contract under `~/.agents/skills/agent-loop/review-round/`. In either runtime, the nested Codex process
-invokes `$review-agent` read-only; only the outer entrypoint may write the branch.
+This is the Codex outer entrypoint. It owns state transitions, finding disposition, branch writes and
+the single PR comment. The child `codex exec` invokes `$review-agent` and remains read-only; it never
+recursively invokes `$review-round`. The Claude entrypoint at `~/.claude/skills/review-round/SKILL.md`
+owns the same workflow when the human starts it from Claude. Both entrypoints share scripts and
+references from `~/.agents/skills/agent-loop/review-round/`.

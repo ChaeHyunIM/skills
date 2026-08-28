@@ -4,7 +4,10 @@
 #   usage: extract-findings.sh <jsonl-path>
 #
 # Normal path: when CLAUDE_CODE_REPORT_FINDINGS=1 takes effect, the findings arrive as a single
-# ReportFindings tool_use event rather than prose. Its .input is printed verbatim:
+# ReportFindings tool_use event rather than prose. Neither the env var nor the stream-json shape of
+# ReportFindings is part of Claude Code's documented CLI surface — this is a pinned undocumented
+# contract, and the prose fallback below is the safety net for the CLI update that drops it.
+# Its .input is printed verbatim:
 #   {level, findings:[{file, line, summary, short_summary, failure_scenario, category, verdict?}]}
 #
 # Fallback: no ReportFindings event means the CLI stopped honouring the env var. The last result

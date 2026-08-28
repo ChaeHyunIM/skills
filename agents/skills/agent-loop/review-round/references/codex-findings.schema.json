@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "string",
+      "enum": ["codex"]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "summary": { "type": "string" },
+          "short_summary": { "type": "string" },
+          "failure_scenario": { "type": "string" },
+          "category": { "enum": ["P0", "P1", "P2", "P3"] }
+        },
+        "required": [
+          "file",
+          "line",
+          "summary",
+          "short_summary",
+          "failure_scenario",
+          "category"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "overall_assessment": { "type": "string" },
+    "test_gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": [
+    "level",
+    "findings",
+    "overall_assessment",
+    "test_gaps",
+    "residual_risks"
+  ],
+  "additionalProperties": false
+}

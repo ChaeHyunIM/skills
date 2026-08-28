@@ -168,4 +168,7 @@ comment-cleaner (no argument)  →  pnpm check-types:<app>  →  commit skill  �
 - **Never commit or push to the base branch**, whatever it is named.
 - **Never force-push. No exceptions** — nothing in this loop rewrites a pushed branch.
 - **Never bypass the adapter for ticket state** — a raw platform call is a second writer.
-- **Never launch a paid human-triggered review mode from Bash.** The human starts it explicitly.
+- **Only a human-fired `review-round` may launch paid review engines.** One invocation authorizes
+  exactly one pass from each engine configured by that skill, all against its pinned head. `implement`,
+  `land`, background jobs and every other skill must never start a review. A retry is another explicit
+  `review-round` invocation — never an automatic loop.
