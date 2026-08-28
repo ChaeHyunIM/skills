@@ -37,8 +37,9 @@ Ticket breakdown progress:
 - [ ] 2  Explore the codebase (optional)
 - [ ] 3  Gather design truth (only if designed UI is involved)
 - [ ] 4  Draft vertical slices and their blocking edges
-- [ ] 5  Quiz the user — iterate until approved
-- [ ] 6  Publish to the tracker in dependency order
+- [ ] 5  Pull the policy gaps out of every slice
+- [ ] 6  Quiz the user — iterate until approved
+- [ ] 7  Publish to the tracker in dependency order
 ```
 
 ## 1. Gather context
@@ -67,7 +68,7 @@ Skip for pure backend/infra work. When a slice touches a UI surface that has a s
    align with frames or flows where that is the natural cut.
 3. **Gap analysis.** For each slice, list the questions the design does not answer: loading/empty/error
    states, interaction edge cases, data rules (sorting, paging, limits), copy for undrawn states. Resolve
-   each from code or docs where possible, recording the source; carry the unresolved ones to [5].
+   each from code or docs where possible, recording the source; carry the unresolved ones to [6].
 4. **Reverse check.** Where the design contradicts code reality — data that doesn't exist, domain
    vocabulary that differs from the glossary, flows that conflict with an ADR — surface it to the user.
    Design and codebase complement each other in both directions; neither silently wins.
@@ -81,7 +82,37 @@ and the expand–contract exception for wide refactors.
 Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A
 ticket with no blockers can start immediately.
 
-## 5. Quiz the user
+## 5. Pull the policy gaps out of every slice
+
+This step runs for **every** slice — backend and infra included, where [3] never ran. A design gap is a
+question about what the screen looks like; a **policy gap** is a question about what the product does, and
+it is the one an implementing agent silently answers in code.
+
+Judge it yourself. Whenever you would settle a question by picking a reasonable answer rather than reading
+one out of the spec, the code, CONTEXT.md or an ADR, that is a 미결 정책 — and it does not get an answer
+invented here. Where you do find the answer, record its source.
+
+**Never resolve a 미결 정책 in chat alone.** A chat answer binds nobody and is gone next session; the
+decision belongs to the team, on the tracker, where it can be read months later. Post every one as a single
+tracker comment before publishing:
+
+```bash
+"$TRACKER" comment <parent-id> <body-file>
+```
+
+Post it on the **parent ticket** when the run came from one. With no parent, ask the user which ticket to
+hang it on — never skip the record because there is no obvious home for it.
+
+```markdown
+## 미결 정책 — <티켓 제목 또는 기능 영역>
+
+### 1. <질문 한 줄>
+- 걸리는 지점: 어떤 케이스에서 답이 필요한지
+- 선택지: A — <사용자에게 무엇이 달라지는가> / B — <같은 형식>
+- 추천: <A 또는 B, 한 줄 근거>
+```
+
+## 6. Quiz the user
 
 Present the breakdown as a numbered list. For each ticket:
 
@@ -89,6 +120,7 @@ Present the breakdown as a numbered list. For each ticket:
 - **Blocked by**: which other tickets must complete first, if any
 - **What it delivers**: the end-to-end behaviour this ticket makes work
 - **Open design gaps**: the questions from [3] that code and docs could not resolve, if any
+- **미결 정책**: the policy gaps from [5], if any, each with its recommended answer
 
 Ask:
 
@@ -97,7 +129,7 @@ Ask:
   **every edge soft** (each side merge-consistent alone)? A hard edge surfacing here means two tickets
   should be fused, not sequenced.
 - Should any tickets be merged or split further?
-- Every unresolved design gap, as a concrete question with your recommended answer.
+- Every unresolved design gap and every 미결 정책, as a concrete question with your recommended answer.
 - **What is out of scope this time?** Name the adjacent behaviour a reader could reasonably assume is
   included but isn't — the neighbouring surface, the follow-up state, the case the design shows but this
   round won't build. Propose the list; the user confirms or corrects it.
@@ -107,11 +139,20 @@ Each confirmed out-of-scope item goes into the `## 목표` of the ticket it bord
 invisible to the implementing agent; putting it in the ticket the agent actually reads beats a separate
 scope document it never opens.
 
-Iterate until the user approves. **Never publish a ticket with an open design question** — the answer goes
-into the ticket's gap list with its source recorded as the user's decision. A ticket is always a complete
-spec; the implementing agent should never hit `blocked` on a question this step could have settled.
+Iterate until the user approves. **Never publish a ticket with an open design question or an unanswered
+미결 정책** — the answer goes into the ticket's gap list with its source recorded as the user's decision. A
+ticket is always a complete spec; the implementing agent should never hit `blocked` on a question this step
+could have settled.
 
-## 6. Publish
+When the user cannot settle a 미결 정책 here — it needs the team, or a decision nobody has made yet —
+**do not publish that ticket.** Leave the tracker comment from [5] standing as the open question, publish
+the slices that do not depend on it, and tell the user which ticket is waiting on which comment. Guessing
+so the ticket can ship is the exact failure this step exists to prevent.
+
+Answers the user does settle here go back on the [5] comment as a reply, not only into the ticket body —
+the ticket gets closed and buried, the decision thread stays findable.
+
+## 7. Publish
 
 Publish one ticket per slice **in dependency order (blockers first)** so each ticket's blocking
 edges can reference real ids:
@@ -149,6 +190,11 @@ decision-rich parts and note briefly that it came from a prototype.
 
 이 티켓이 동작하게 만드는 종단 간 동작 — 사용자 관점에서, 랜딩하면 무엇이 데모 가능해지는가.
 레이어별 구현 목록이 아니다. 확정한 범위 밖 항목과 맞닿으면 그 경계 한 줄로 닫는다.
+
+## 정책
+
+이 티켓이 전제하는 제품 규칙 중 코드와 디자인만 봐서는 알 수 없는 것. 규칙 하나에 불릿 하나,
+각각 그 답의 출처(코드·문서·트래커 코멘트 링크). 정할 게 없었으면 생략.
 
 ## 디자인
 

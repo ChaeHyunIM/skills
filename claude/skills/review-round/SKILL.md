@@ -201,8 +201,13 @@ Every finding gets exactly one disposition, decided here and reported in [7]:
 - **반영** — clear-cut: bugs, type errors, project-rule violations. Fix them.
 - **기각** — the finding is wrong. Verify before rejecting and keep the counter-evidence as `path:line`;
   a rejection without it is just an assertion.
-- **보류** — a judgment call, or a change the human owns (migrations, architecture, cost trade-offs).
-  **Do not touch the code**, and work out the options *now* — [7] requires them.
+- **보류** — a judgment call, or a change the human owns (migrations, architecture, cost trade-offs,
+  **product policy**). **Do not touch the code**, and work out the options *now* — [7] requires them.
+
+  Policy is the one that disguises itself as a fix. Judge it yourself: whenever resolving a finding means
+  deciding what the product does rather than correcting what the code got wrong, it is 보류 — even when the
+  "right" answer looks obvious, and even when the ticket says nothing about it. Silence is a gap the team
+  fills, not one this round fills.
 
 Write the combined list to `<scratchpad>/review-<N>-r<K>.findings.json` before disposition and record
 each disposition there as you go. The Claude and Codex scratchpad outputs are engine evidence; the
