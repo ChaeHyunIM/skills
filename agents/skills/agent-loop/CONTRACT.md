@@ -147,6 +147,17 @@ A fresh worktree needs two things before it is usable:
 Everything a human reads is written in **Korean**: PR titles and bodies, ticket bodies and comments, round
 comments, commit messages.
 
+Korean prose in this loop has **two audiences, two registers**:
+
+- **Ticket bodies and ticket comments** are read by non-developers too (기획·디자인·운영). Apply the
+  `korean-output` skill (`~/.agents/skills/korean-output/SKILL.md`) and write so a non-developer can follow:
+  no developer-translationese, no compressed jargon chains — say what the user will be able to do and why,
+  and unpack any technical term you cannot avoid in one plain sentence. Code identifiers, API shapes and
+  schema sketches stay verbatim where the template calls for them (서버 구현사항 etc.); the prose around
+  them is what must read plainly.
+- **PR titles/bodies, round comments, commit messages** are developer-to-developer — technical register
+  and agent-style precision are fine there.
+
 There is exactly one path to a commit:
 
 ```

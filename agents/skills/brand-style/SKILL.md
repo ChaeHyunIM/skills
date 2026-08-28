@@ -1,6 +1,6 @@
 ---
 name: brand-style
-description: 사용자의 브랜드 시각 규칙 — 게시용 단일 HTML 페이지(Claude Code 의 Artifact, Codex 의 site)를 만들 때 쓰는 타이포그래피와 아이콘 규칙. 페이지·문서·슬라이드·포스터 등 사람이 보게 될 HTML 산출물을 새로 쓰거나 고칠 때 먼저 불러온다. Artifact / site / 아티팩트 / 사이트 / 랜딩 / 리포트 페이지 / 대시보드 / 목업 요청에 걸린다.
+description: 사용자의 브랜드 규칙 — 게시용 단일 HTML 페이지(Claude Code 의 Artifact, Codex 의 site)를 만들 때 쓰는 타이포그래피·아이콘·산문 규칙. 페이지·문서·슬라이드·포스터 등 사람이 보게 될 HTML 산출물을 새로 쓰거나 고칠 때 먼저 불러온다. Artifact / site / 아티팩트 / 사이트 / 랜딩 / 리포트 페이지 / 대시보드 / 목업 요청에 걸린다.
 ---
 
 # brand-style
@@ -30,3 +30,12 @@ curl -s https://unpkg.com/@phosphor-icons/core/assets/regular/map-pin.svg
 인라인할 때 `width`/`height` 는 지우고 `viewBox` 만 남긴 뒤 `fill="currentColor"` 로 바꿔 글자색을 따라가게 한다.
 
 **이모지를 아이콘 대용으로 쓰지 않는다.** favicon 은 예외다.
+
+## 글
+
+페이지에 들어가는 한국어 산문에는 **`korean-output` 스킬**(`~/.agents/skills/korean-output/SKILL.md`)을
+적용한다. 게시된 페이지의 독자는 대개 비개발자다 — 기획·디자인·운영, 혹은 외부 공유 대상.
+
+- 개발번역체·압축 명사 연쇄 금지. 피할 수 없는 기술 용어는 첫 등장에서 한 문장으로 푼다.
+- 문단은 한 번 읽고 넘어갈 수 있게: 한 문장에 생각 하나, 결론은 문단 첫 줄에.
+- 코드·식별자·수치는 원문 유지. 시각적 라벨(버튼·차트 축 등)은 짧아도 되지만, 본문 문단은 완전한 문장으로.

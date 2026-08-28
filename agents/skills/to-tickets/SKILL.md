@@ -128,7 +128,11 @@ listing.
 `create` puts every published ticket in `ready`, **blocked ones included** — the state says the spec is
 complete, not that work can start today. Startability comes from the edges.
 
-**Ticket bodies are written in Korean.** Do not close or modify the parent ticket.
+**Ticket bodies are written in Korean, for non-developers too** — per CONTRACT's [Output convention],
+apply the `korean-output` skill and avoid developer-translationese: a 기획자·디자이너 reading only `## 목표`
+and `## Acceptance criteria` must understand what ships and how to check it. Technical sections
+(서버 구현사항, API 계약) keep their precision; the prose around them reads plainly. Do not close or
+modify the parent ticket.
 
 Avoid specific file paths and code snippets — they go stale fast. Two exceptions, both decision-rich by
 nature: API contracts in 서버 구현사항, and a snippet a prototype produced that encodes a decision more
