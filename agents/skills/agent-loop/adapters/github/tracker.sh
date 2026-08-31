@@ -19,7 +19,9 @@
 #   comment <id> <body-file>  post an issue comment
 #   pr-for <id> [--merged]    the PR tied to this ticket: [{number,url,headRefName,baseRefName}]
 #   link-line <id>            the text a PR body must carry to bind PR → ticket (prints raw)
-#   create <title> <body-file>  create a ticket in 'ready' state, print its id (raw)
+#   planning-context          쓰기 가능한 네이티브 속성과 계획 근거
+#   create <title> <body-file> [<properties-json>]
+#                             'ready' 티켓을 만들고 id를 출력한다(raw)
 #   landed <id>               after merge: verify the tracker recorded completion; close if not
 #
 # States: ready | in-progress | awaiting-review | in-review | blocked
@@ -129,10 +131,20 @@ case "$verb" in
     echo "Closes #$id"
     ;;
 
+  planning-context)
+    jq -n '{properties:[]}'
+    ;;
+
   create)
-    title="${1:?usage: tracker create <title> <body-file>}"
-    file="${2:?usage: tracker create <title> <body-file>}"
+    title="${1:?usage: tracker create <title> <body-file> [<properties-json>]}"
+    file="${2:?usage: tracker create <title> <body-file> [<properties-json>]}"
+    properties="${3:-}"
+    [ -n "$properties" ] || properties='{}'
     [ -f "$file" ] || die "no such file: $file"
+    properties=$(echo "$properties" | jq -ec 'if type == "object" then . else error("expected an object") end') \
+      || die "properties-json must be a JSON object"
+    [ "$(echo "$properties" | jq 'length')" -eq 0 ] \
+      || die "GitHub adapter does not advertise writable ticket properties"
     gh issue create --title "$title" --body-file "$file" --label ready-for-agent
     ;;
 

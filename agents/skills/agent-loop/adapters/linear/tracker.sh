@@ -21,11 +21,21 @@
 #   bootstrap   create the "Agent" label group and its five `agent:*` labels
 #               if missing. Run once per workspace.
 #
+# 공통 속성 명령:
+#   planning-context
+#               쓰기 가능한 네이티브 속성과 현재 Cycle 근거를 제공한다.
+#               `create`는 승인된 값을 선택적 세 번째 JSON 인자로 받아
+#               이슈를 만들기 전에 전부 검증한다.
+#
 # Config (sourced from <repo>/.claude/agent-loop/config):
 #   LINEAR_TEAM_KEY   required — the team whose tickets the loop works (e.g. YOU)
 #   STATUS_READY / STATUS_STARTED / STATUS_REVIEW / STATUS_DONE
 #                     optional — workflow status NAMES; defaults below match
 #                     Linear's stock names except STATUS_REVIEW
+#   LINEAR_ESTIMATE_VALUES
+#                     선택 — 팀에서 활성화한 Estimate scale의 정수 목록.
+#                     Linear 공개 API는 이 설정을 노출하지 않으므로, 값이 없으면
+#                     광고 대상 Cycle에서 실제로 관측된 값만 제공하고 추측하지 않는다.
 # Team and status ids are resolved from these names at runtime, per invocation —
 # adapter calls are rare enough that a cache would only add staleness risk.
 #
@@ -113,6 +123,210 @@ status_name_for() {
 agent_labels() { # name → id map for every agent:* label
   gql 'query{issueLabels(filter:{name:{startsWith:"agent:"}}){nodes{id name}}}' \
     | jq '[.data.issueLabels.nodes[] | {(.name): .id}] | add // {}'
+}
+
+configured_estimate_values() {
+  local raw="${LINEAR_ESTIMATE_VALUES:-}" values
+  if [ -z "$raw" ]; then
+    echo '[]'
+    return
+  fi
+  values=$(jq -en --arg raw "$raw" '
+      $raw | split(",") | map(gsub("^\\s+|\\s+$"; ""))
+      | if any(.[]; . == "") then error("empty value") else map(tonumber) end
+      | if any(.[]; . < 0 or . > 64 or . != floor)
+        then error("values must be integers from 0 through 64")
+        else unique end') \
+    || die "LINEAR_ESTIMATE_VALUES must be comma-separated integers from 0 through 64"
+  echo "$values"
+}
+
+planning_context() {
+  local configured response cycle_ids issues
+  configured=$(configured_estimate_values)
+  response=$(gql 'query($k:String!){teams(filter:{key:{eq:$k}}){nodes{
+      id cyclesEnabled defaultIssueEstimate
+      activeCycle{id number name startsAt endsAt isActive isFuture isPast}
+      cycles(first:10){nodes{id number name startsAt endsAt isActive isFuture isPast
+        issueCountHistory completedIssueCountHistory scopeHistory completedScopeHistory}}
+    }}}' "$(jq -n --arg k "$TEAM_KEY" '{k:$k}')")
+  cycle_ids=$(echo "$response" | jq '[
+      (.data.teams.nodes[0].activeCycle | select(. != null)),
+      (.data.teams.nodes[0].cycles.nodes[] | select(.isFuture))]
+      | sort_by(.startsAt) | .[0:3] | map(.id)')
+  issues='{"nodes":[],"pageInfo":{"hasNextPage":false}}'
+  if [ "$(echo "$cycle_ids" | jq 'length')" -gt 0 ]; then
+    issues=$(gql 'query($k:String!,$ids:[ID!]!){issues(
+        filter:{team:{key:{eq:$k}},cycle:{id:{in:$ids}}},first:250){
+          nodes{cycle{id} estimate} pageInfo{hasNextPage}}}' \
+      "$(jq -n --arg k "$TEAM_KEY" --argjson ids "$cycle_ids" '{k:$k,ids:$ids}')" \
+      | jq '.data.issues')
+  fi
+
+  echo "$response" | jq --argjson configured "$configured" --argjson issues "$issues" '
+    .data.teams.nodes[0] // error("team not found")
+    | . as $team
+    | ([$issues.nodes[]?.estimate | select(. != null)] | unique) as $observed
+    | ([$team.cycles.nodes[]
+        | select((.scopeHistory | length) > 0 and (.issueCountHistory | length) > 0)
+        | select(.scopeHistory[-1] != .issueCountHistory[-1])] | length > 0) as $scopeDiffers
+    | (if ($configured | length) > 0 then $configured else $observed end) as $estimateValues
+    | (($estimateValues | length) > 0 or $scopeDiffers) as $usesEstimates
+    | (if $usesEstimates then "points" else "issues" end) as $unit
+    | ([($team.activeCycle | select(. != null)),
+        ($team.cycles.nodes[] | select(.isFuture))]
+       | sort_by(.startsAt) | .[0:3]
+       | map({
+           value: .id,
+           label: (if (.name // "") != "" then .name else "Cycle \(.number)" end),
+           state: (if .isActive then "active" else "upcoming" end),
+           number,
+           startsAt,
+           endsAt,
+           scope: (if ($issues.pageInfo.hasNextPage // false) then null
+             elif $unit == "points"
+             then ([.id as $cycleId | $issues.nodes[]
+                    | select(.cycle.id == $cycleId)
+                    | (.estimate // $team.defaultIssueEstimate)] | add // 0)
+             else ([.id as $cycleId | $issues.nodes[]
+                    | select(.cycle.id == $cycleId)] | length)
+             end),
+           scopeTruncated: ($issues.pageInfo.hasNextPage // false)
+         })) as $cycleValues
+    | ([$team.cycles.nodes[] | select(.isPast)]
+       | sort_by(.endsAt) | reverse | .[0:3]
+       | map({
+           number,
+           startsAt,
+           endsAt,
+           completed: (if $unit == "points"
+             then (.completedScopeHistory[-1] // 0)
+             else (.completedIssueCountHistory[-1] // 0)
+           end)
+         })) as $throughputCycles
+    | {
+        properties:
+          ((if ($estimateValues | length) > 0 then [{
+              key: "estimate",
+              label: "Estimate",
+              kind: "enum",
+              semantics: "relative-size",
+              values: [$estimateValues[] | {value: ., label: tostring}],
+              context: {
+                unestimatedWeight: $team.defaultIssueEstimate,
+                valuesSource: (if ($configured | length) > 0 then "config" else "observed" end)
+              }
+            }] else [] end)
+          + (if $team.cyclesEnabled and ($cycleValues | length) > 0 then [{
+              key: "cycle",
+              label: "Cycle",
+              kind: "enum",
+              semantics: "delivery-window",
+              values: $cycleValues,
+              context: {
+                unit: $unit,
+                unestimatedWeight: $team.defaultIssueEstimate,
+                recentThroughput: {
+                  cycles: $throughputCycles,
+                  average: (if ($throughputCycles | length) > 0
+                    then ([$throughputCycles[].completed] | add / length)
+                    else null end)
+                }
+              }
+            }] else [] end)
+          + [{
+              key: "priority",
+              label: "Priority",
+              kind: "enum",
+              semantics: "urgency",
+              default: "none",
+              values: [
+                {value:"none",label:"No priority",level:"neutral"},
+                {value:"low",label:"Low",level:"low"},
+                {value:"medium",label:"Medium",level:"medium"},
+                {value:"high",label:"High",level:"high"},
+                {value:"urgent",label:"Urgent",level:"critical"}
+              ]
+            }, {
+              key: "dueDate",
+              label: "Due date",
+              kind: "date",
+              semantics: "external-deadline",
+              format: "YYYY-MM-DD"
+            }])
+      }'
+}
+
+linear_property_input() {
+  local raw="$1" properties unknown input priority due context estimate cycle
+  properties=$(echo "$raw" | jq -ec '
+      if type == "object" then . else error("expected an object") end') \
+    || die "properties-json must be a JSON object"
+  unknown=$(echo "$properties" | jq -c 'keys - ["cycle","dueDate","estimate","priority"]')
+  [ "$unknown" = "[]" ] || die "unsupported properties: $unknown"
+  input='{}'
+
+  if [ "$(echo "$properties" | jq 'has("priority")')" = "true" ]; then
+    priority=$(echo "$properties" | jq -er '
+      .priority | if type == "string" then . else error("expected a string") end') \
+      || die "priority must be one of none, low, medium, high, urgent"
+    case "$priority" in
+      none)   priority=0 ;;
+      urgent) priority=1 ;;
+      high)   priority=2 ;;
+      medium) priority=3 ;;
+      low)    priority=4 ;;
+      *) die "priority must be one of none, low, medium, high, urgent" ;;
+    esac
+    input=$(jq -n --argjson input "$input" --argjson priority "$priority" \
+      '$input + {priority:$priority}')
+  fi
+
+  if [ "$(echo "$properties" | jq 'has("dueDate")')" = "true" ]; then
+    due=$(echo "$properties" | jq -er '
+      .dueDate | if type == "string" then . else error("expected a string") end') \
+      || die "dueDate must use YYYY-MM-DD"
+    jq -en --arg d "$due" '
+      try ($d | capture("^(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})$")
+        | (.year | tonumber) as $year
+        | (.month | tonumber) as $month
+        | (.day | tonumber) as $day
+        | if $year < 1 or $month < 1 or $month > 12 then false
+          else ([31,
+            (if ($year % 400 == 0) or ($year % 4 == 0 and $year % 100 != 0) then 29 else 28 end),
+            31,30,31,30,31,31,30,31,30,31][$month - 1]) as $lastDay
+            | $day >= 1 and $day <= $lastDay
+          end) catch false' \
+      > /dev/null || die "dueDate must be a real date in YYYY-MM-DD"
+    input=$(jq -n --argjson input "$input" --arg due "$due" '$input + {dueDate:$due}')
+  fi
+
+  if [ "$(echo "$properties" | jq 'has("estimate") or has("cycle")')" = "true" ]; then
+    context=$(planning_context)
+  fi
+
+  if [ "$(echo "$properties" | jq 'has("estimate")')" = "true" ]; then
+    estimate=$(echo "$properties" | jq -er '
+      .estimate | if type == "number" and . == floor then . else error("expected an integer") end') \
+      || die "estimate must be an advertised integer"
+    echo "$context" | jq -e --argjson estimate "$estimate" '
+      [.properties[] | select(.key == "estimate") | .values[].value] | index($estimate) != null' \
+      > /dev/null || die "estimate is not currently advertised by planning-context"
+    input=$(jq -n --argjson input "$input" --argjson estimate "$estimate" \
+      '$input + {estimate:$estimate}')
+  fi
+
+  if [ "$(echo "$properties" | jq 'has("cycle")')" = "true" ]; then
+    cycle=$(echo "$properties" | jq -er '
+      .cycle | if type == "string" and length > 0 then . else error("expected a string") end') \
+      || die "cycle must be an advertised value"
+    echo "$context" | jq -e --arg cycle "$cycle" '
+      [.properties[] | select(.key == "cycle") | .values[].value] | index($cycle) != null' \
+      > /dev/null || die "cycle is not currently advertised by planning-context"
+    input=$(jq -n --argjson input "$input" --arg cycle "$cycle" '$input + {cycleId:$cycle}')
+  fi
+
+  echo "$input"
 }
 
 # Same {number,…,state} projection as the github adapter — .state is open/closed
@@ -248,10 +462,17 @@ case "$verb" in
     echo "Fixes $(ident "${1:?usage: tracker link-line <id>}")"
     ;;
 
+  planning-context)
+    planning_context
+    ;;
+
   create)
-    title="${1:?usage: tracker create <title> <body-file>}"
-    file="${2:?usage: tracker create <title> <body-file>}"
+    title="${1:?usage: tracker create <title> <body-file> [<properties-json>]}"
+    file="${2:?usage: tracker create <title> <body-file> [<properties-json>]}"
+    properties="${3:-}"
+    [ -n "$properties" ] || properties='{}'
     [ -f "$file" ] || die "no such file: $file"
+    property_input=$(linear_property_input "$properties")
     labels=$(agent_labels)
     ready_id=$(echo "$labels" | jq -r '.["agent:ready"] // empty')
     [ -n "$ready_id" ] || die "label agent:ready missing — run 'tracker bootstrap' first"
@@ -269,8 +490,9 @@ case "$verb" in
     fi
     input=$(jq -n --arg t "$title" --rawfile d "$file" \
       --arg team "$(echo "$t" | jq -r .id)" \
-      --arg s "$(state_id_of "$t" "$STATUS_READY")" --arg l "$ready_id" --argjson p "$parent_input" \
-      '{teamId:$team,title:$t,description:$d,stateId:$s,labelIds:[$l]} + $p')
+      --arg s "$(state_id_of "$t" "$STATUS_READY")" --arg l "$ready_id" \
+      --argjson p "$parent_input" --argjson properties "$property_input" \
+      '{teamId:$team,title:$t,description:$d,stateId:$s,labelIds:[$l]} + $p + $properties')
     gql 'mutation($i:IssueCreateInput!){issueCreate(input:$i){issue{identifier url}}}' \
       "$(jq -n --argjson i "$input" '{i:$i}')" \
       | jq -r '.data.issueCreate.issue.url'

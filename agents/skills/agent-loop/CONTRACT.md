@@ -79,8 +79,30 @@ adapter covers. Adapter output is JSON on stdout unless a verb says otherwise.
 | `comment <id> <body-file>` | post a ticket comment |
 | `pr-for <id> [--merged]` | the PR bound to this ticket: `[{number,url,headRefName,baseRefName}]`. Handles search-index lag and false full-text matches internally |
 | `link-line <id>` | prints the text a PR body must carry to bind PR → ticket (GitHub: `Closes #<id>`) |
-| `create <title> <body-file>` | create a ticket in `ready` state, print its reference |
+| `planning-context` | writable native ticket properties and current planning evidence: `{"properties":[{key,label,kind,semantics,values?,format?,default?,context?}]}`. Returns an empty array when the adapter has none |
+| `create <title> <body-file> [<properties-json>]` | create a ticket in `ready` state with the approved native properties, print its reference |
 | `landed <id>` | after the merge: verify the tracker recorded completion; close it only if the platform's own automation missed |
+
+`properties-json` is an optional JSON object whose keys and validation rules come from the same adapter's
+`planning-context`. The adapter validates the entire object before creating anything and rejects malformed,
+unsupported or stale values instead of silently dropping them. Omitting it is equivalent to `{}`, which keeps
+existing callers compatible. Property names, platform ids and planning metrics never enter ticket prose merely
+to duplicate a native field.
+
+Properties that `to-tickets` can recommend use this normalized vocabulary:
+
+| `semantics` | `kind` | Required normalized data |
+|---|---|---|
+| `relative-size` | `enum` | numeric `values:[{value,label}]`, ordered from smaller to larger |
+| `delivery-window` | `enum` | `values:[{value,label,state,startsAt,endsAt,scope,scopeTruncated}]`, where `state` is `active` or `upcoming`; `context:{unit,unestimatedWeight,recentThroughput:{cycles,average}}`, where `unit` is `issues` or `points` |
+| `urgency` | `enum` | `values:[{value,label,level}]`, where `level` is `neutral`, `low`, `medium`, `high` or `critical`; a neutral `default` when the platform has one |
+| `external-deadline` | `date` | `format:"YYYY-MM-DD"` |
+
+For `enum`, only an advertised `values[].value` is valid. For `date`, a value is valid when it satisfies the
+advertised format and adapter validation. An adapter omits a property it cannot describe safely. An unset or
+default-preserving property is represented by omitting its key from `properties-json`, never by sending
+`"unset"` or `null`. Other semantics may be advertised for explicit user input, but `to-tickets` does not infer
+them.
 
 ## State machine
 

@@ -114,6 +114,16 @@ hang it on — never skip the record because there is no obvious home for it.
 
 ## 6. Quiz the user
 
+Before presenting the breakdown, call the adapter once:
+
+```bash
+planning_context=$("$TRACKER" planning-context)
+```
+
+Treat its `properties` array as a capability response, not as a fixed tracker schema. When it is non-empty,
+**read `~/.agents/skills/to-tickets/references/planning-properties.md`** and build the proposals from it. When it
+is empty, skip property work entirely. The skill never branches on a platform name.
+
 Present the breakdown as a numbered list. For each ticket:
 
 - **Title**
@@ -121,6 +131,8 @@ Present the breakdown as a numbered list. For each ticket:
 - **What it delivers**: the end-to-end behaviour this ticket makes work
 - **Open design gaps**: the questions from [3] that code and docs could not resolve, if any
 - **미결 정책**: the policy gaps from [5], if any, each with its recommended answer
+- **Tracker properties**: each proposed native value (or `unset`) with one short reason; omit when the adapter
+  advertises no properties
 
 Ask:
 
@@ -130,6 +142,8 @@ Ask:
   should be fused, not sequenced.
 - Should any tickets be merged or split further?
 - Every unresolved design gap and every 미결 정책, as a concrete question with your recommended answer.
+- Accept all proposed tracker properties, or name only the overrides. Ask once for the whole set rather than
+  interrogating the user property by property.
 - **What is out of scope this time?** Name the adjacent behaviour a reader could reasonably assume is
   included but isn't — the neighbouring surface, the follow-up state, the case the design shows but this
   round won't build. Propose the list; the user confirms or corrects it.
@@ -158,9 +172,14 @@ Publish one ticket per slice **in dependency order (blockers first)** so each ti
 edges can reference real ids:
 
 ```bash
-"$TRACKER" create "<제목>" <body-file>       # lands in 'ready'
+"$TRACKER" create "<제목>" <body-file> '<approved-properties-json>'  # lands in 'ready'
 "$TRACKER" add-edge <id> <blocker-id>        # once per blocking edge
 ```
+
+Build one compact JSON object per ticket from the approved property keys. Omit keys approved as `unset` or
+left at the adapter default, and omit the third argument when the object is empty. The adapter validates the
+whole object before creation; if a value became stale, return to the proposal instead of dropping the property
+and publishing a different ticket.
 
 Write each blocking edge into the body's `## Blocked by` **and** the native edge via `add-edge` — both
 are mandatory, per CONTRACT's [Blocking edges]. A ticket with the prose alone reads as startable in every
@@ -181,10 +200,6 @@ precisely than prose can (state machine, reducer, schema, type shape) — inline
 decision-rich parts and note briefly that it came from a prototype.
 
 <issue-template>
-
-## Parent
-
-트래커의 부모 이슈 참조(원본이 기존 이슈였을 때만, 아니면 이 섹션 생략).
 
 ## 목표
 
