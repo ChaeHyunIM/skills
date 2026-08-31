@@ -121,11 +121,16 @@ process's read-only defect-first contract.
 SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/review-round-<N>-r<K>.XXXXXX")
 bash ~/.agents/skills/agent-loop/review-round/scripts/run-reviewers.sh \
   <worktree> <N> <K> "$COMPARISON_REF" "$ROUND_BASE" \
-  "$CODEX_MODEL" <normalized-effort> "$SCRATCH" <normalized-Claude-args...>
+  "$CODEX_MODEL" <normalized-effort> "$SCRATCH" <normalized-Claude-args...> <PR>
 ```
 
 - `<normalized-Claude-args...>` is the effort-defaulted argument array from [Arguments], not the caller's
   raw tail.
+- **`<PR>` is the PR number from [1], always appended last so it becomes Claude's review target.** Left
+  targetless, `/code-review` picks its own comparison base — in practice `main` — so when the PR's base
+  branch is ahead of `main`, the review sweeps the base's own commits too (YOU-49 round 1: 7 of 11
+  findings were dev-only backend code outside the PR). The PR target pins the diff to the PR's declared
+  base; the head is already pushed and [1] pulls, so the PR diff equals the pinned worktree head.
 - **Run the runner with escalated permissions, outside the sandbox.** The nested `claude` and
   `codex exec` processes need network access to reach their models and write CLI state under `$HOME`;
   the default workspace-write sandbox blocks both. The helper's `--sandbox read-only` only constrains
@@ -184,7 +189,9 @@ Every finding gets exactly one disposition, decided here and reported in [7]:
 - **기각** — the finding is wrong. Verify before rejecting and keep the counter-evidence as `path:line`;
   a rejection without it is just an assertion.
 - **보류** — a judgment call, or a change the human owns (migrations, architecture, cost trade-offs,
-  **product policy**). **Do not touch the code**, and work out the options *now* — [7] requires them.
+  **product policy**). **Do not touch the code**, and work out the options *now* — [7] and [8] both
+  require them. Tag each 보류 **개발** (a developer decides) or **팀** (기획·운영도 결정에 참여한다);
+  [8] translates only the 팀 ones for a non-developer audience.
 
   Policy is the one that disguises itself as a fix. Judge it yourself: whenever resolving a finding means
   deciding what the product does rather than correcting what the code got wrong, it is 보류 — even when the
@@ -251,6 +258,18 @@ gh pr comment <PR> --body-file <scratchpad>/round-<N>-r<K>.md
   **pointer only** (`리뷰 라운드 <K> 보류 <c>건 — <PR 코멘트 URL>`). Never restate the options there;
   two copies drift.
 - **Neither** → `awaiting-review`.
+
+### 팀이 정해야 하는 보류는 따로 번역해 올린다
+
+The round comment is developer-to-developer and posts itself. Some 보류 items are not a developer's
+call at all — product policy, operating rules, cost, user-visible behaviour — and 기획·디자인·운영
+never open the PR to read them.
+
+When at least one 보류 is that kind, rewrite **those items only** into a second ticket comment a
+non-developer can read. **Read `~/.agents/skills/agent-loop/review-round/references/team-comment.md`
+and follow it exactly.** Its rule that outranks everything else here: the draft goes to the chat in
+full and is posted **only after the human approves it**. Never call `"$TRACKER" comment` with it
+unapproved. Pure-development 보류 stays in the PR comment and is not translated.
 
 ```bash
 "$TRACKER" transition <N> <blocked|awaiting-review>
