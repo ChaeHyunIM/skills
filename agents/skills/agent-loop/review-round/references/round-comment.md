@@ -35,7 +35,7 @@
 ```markdown
 ## 리뷰 라운드 <K>
 
-Claude `/code-review <args>` · Codex `gpt-5.6-sol/<effort> $review-agent` · 지적 <n>건 — 반영 <a> · 기각 <b> · 보류 <c>
+Claude `/code-review <args> <PR>` · Codex `gpt-5.6-sol/<effort> $review-agent` · 지적 <n>건 — 반영 <a> · 기각 <b> · 보류 <c>
 
 ### 지적 전체
 
