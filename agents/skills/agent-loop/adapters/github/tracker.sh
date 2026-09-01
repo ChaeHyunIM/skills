@@ -22,6 +22,7 @@
 #   planning-context          쓰기 가능한 네이티브 속성과 계획 근거
 #   create <title> <body-file> [<properties-json>]
 #                             'ready' 티켓을 만들고 id를 출력한다(raw)
+#                             TRACKER_PARENT 가 설정돼 있으면 거부한다 — 네이티브 parent 매핑이 아직 없다
 #   landed <id>               after merge: verify the tracker recorded completion; close if not
 #
 # States: ready | in-progress | awaiting-review | in-review | blocked
@@ -145,6 +146,9 @@ case "$verb" in
       || die "properties-json must be a JSON object"
     [ "$(echo "$properties" | jq 'length')" -eq 0 ] \
       || die "GitHub adapter does not advertise writable ticket properties"
+    # 티켓 본문은 부모를 적지 않으므로(CONTRACT [Tracker adapter]) 네이티브 관계를 못 만들면 부모가 통째로 사라진다
+    [ -z "${TRACKER_PARENT:-}" ] \
+      || die "GitHub adapter does not register a native parent yet — TRACKER_PARENT must stay unset"
     gh issue create --title "$title" --body-file "$file" --label ready-for-agent
     ;;
 

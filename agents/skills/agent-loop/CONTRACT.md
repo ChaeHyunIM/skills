@@ -80,8 +80,12 @@ adapter covers. Adapter output is JSON on stdout unless a verb says otherwise.
 | `pr-for <id> [--merged]` | the PR bound to this ticket: `[{number,url,headRefName,baseRefName}]`. Handles search-index lag and false full-text matches internally |
 | `link-line <id>` | prints the text a PR body must carry to bind PR → ticket (GitHub: `Closes #<id>`) |
 | `planning-context` | writable native ticket properties and current planning evidence: `{"properties":[{key,label,kind,semantics,values?,format?,default?,context?}]}`. Returns an empty array when the adapter has none |
-| `create <title> <body-file> [<properties-json>]` | create a ticket in `ready` state with the approved native properties, print its reference |
+| `create <title> <body-file> [<properties-json>]` | create a ticket in `ready` state with the approved native properties, print its reference. Reads `TRACKER_PARENT=<id>` from the environment and registers it as the **native** parent relation; an adapter that cannot must refuse, never create an orphan |
 | `landed <id>` | after the merge: verify the tracker recorded completion; close it only if the platform's own automation missed |
+
+The native parent relation is the **only** record of a ticket's parent — ticket bodies carry no `## Parent`
+section, so a `create` that silently drops `TRACKER_PARENT` leaves the ticket unreachable from the issue it
+came from (YOU-67, 2026-08-28). `to-tickets` sets the variable whenever the run came from a parent ticket.
 
 `properties-json` is an optional JSON object whose keys and validation rules come from the same adapter's
 `planning-context`. The adapter validates the entire object before creating anything and rejects malformed,

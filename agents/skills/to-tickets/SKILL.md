@@ -117,7 +117,7 @@ hang it on — never skip the record because there is no obvious home for it.
 Before presenting the breakdown, call the adapter once:
 
 ```bash
-planning_context=$("$TRACKER" planning-context)
+"$TRACKER" planning-context
 ```
 
 Treat its `properties` array as a capability response, not as a fixed tracker schema. When it is non-empty,
@@ -172,9 +172,14 @@ Publish one ticket per slice **in dependency order (blockers first)** so each ti
 edges can reference real ids:
 
 ```bash
-"$TRACKER" create "<제목>" <body-file> '<approved-properties-json>'  # lands in 'ready'
+TRACKER_PARENT=<parent-id> "$TRACKER" create "<제목>" <body-file> '<approved-properties-json>'  # lands in 'ready'
 "$TRACKER" add-edge <id> <blocker-id>        # once per blocking edge
 ```
+
+When the run came from a parent ticket, **always** pass `TRACKER_PARENT` — it is the only record of the
+parent, because the body has no `## Parent` section (CONTRACT's [Tracker adapter]). Omit the variable only
+for a run with no parent. An adapter that cannot register a native parent refuses instead of publishing an
+orphan; stop and tell the user rather than retrying without it.
 
 Build one compact JSON object per ticket from the approved property keys. Omit keys approved as `unset` or
 left at the adapter default, and omit the third argument when the object is empty. The adapter validates the

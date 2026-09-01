@@ -142,17 +142,29 @@ configured_estimate_values() {
 }
 
 planning_context() {
-  local configured response cycle_ids issues
+  local configured team open since past cycle_ids issues
   configured=$(configured_estimate_values)
-  response=$(gql 'query($k:String!){teams(filter:{key:{eq:$k}}){nodes{
+  # cycle 은 세 번에 나눠 읽는다. 한 쿼리에 합치면 complexity 한도(10000)를 넘고,
+  # `cycles(first:N)` 의 정렬은 필터 유무에 따라 최신순·오래된순이 뒤바뀌어 개수 상한으로 최근 것을
+  # 고를 수 없다 — 그래서 광고 대상은 isPast 필터로, 처리량은 endsAt 날짜 필터로 가져와 jq 에서 정렬한다.
+  team=$(gql 'query($k:String!){teams(filter:{key:{eq:$k}}){nodes{
       id cyclesEnabled defaultIssueEstimate
-      activeCycle{id number name startsAt endsAt isActive isFuture isPast}
-      cycles(first:10){nodes{id number name startsAt endsAt isActive isFuture isPast
+      cycles(filter:{isPast:{eq:false}},first:20){nodes{id number name startsAt endsAt isActive isFuture
+        issueCountHistory scopeHistory}}
+    }}}' "$(jq -n --arg k "$TEAM_KEY" '{k:$k}')" \
+    | jq '.data.teams.nodes[0] // error("team not found")')
+  # 사이클 길이는 팀마다 1~8주라 고정 일수로 자르지 않고, 활성 사이클 길이의 4배 전까지를 처리량 창으로 본다
+  since=$(echo "$team" | jq -r '
+      def ts: sub("\\.[0-9]+Z$"; "Z") | fromdate;
+      ([.cycles.nodes[] | select(.isActive)][0]) as $active
+      | (if $active then (($active.endsAt | ts) - ($active.startsAt | ts)) else 7 * 86400 end) as $len
+      | (now - 4 * $len) | todate')
+  past=$(gql 'query($k:String!,$since:DateTimeOrDuration!){teams(filter:{key:{eq:$k}}){nodes{
+      cycles(filter:{isPast:{eq:true},endsAt:{gte:$since}},first:20){nodes{number startsAt endsAt
         issueCountHistory completedIssueCountHistory scopeHistory completedScopeHistory}}
-    }}}' "$(jq -n --arg k "$TEAM_KEY" '{k:$k}')")
-  cycle_ids=$(echo "$response" | jq '[
-      (.data.teams.nodes[0].activeCycle | select(. != null)),
-      (.data.teams.nodes[0].cycles.nodes[] | select(.isFuture))]
+    }}}' "$(jq -n --arg k "$TEAM_KEY" --arg since "$since" '{k:$k,since:$since}')" \
+    | jq '[.data.teams.nodes[0].cycles.nodes[]] | sort_by(.endsAt) | reverse | .[0:3]')
+  cycle_ids=$(echo "$team" | jq '[.cycles.nodes[] | select(.isActive or .isFuture)]
       | sort_by(.startsAt) | .[0:3] | map(.id)')
   issues='{"nodes":[],"pageInfo":{"hasNextPage":false}}'
   if [ "$(echo "$cycle_ids" | jq 'length')" -gt 0 ]; then
@@ -163,18 +175,18 @@ planning_context() {
       | jq '.data.issues')
   fi
 
-  echo "$response" | jq --argjson configured "$configured" --argjson issues "$issues" '
-    .data.teams.nodes[0] // error("team not found")
-    | . as $team
+  echo "$team" | jq --argjson configured "$configured" --argjson issues "$issues" --argjson past "$past" '
+    . as $team
     | ([$issues.nodes[]?.estimate | select(. != null)] | unique) as $observed
-    | ([$team.cycles.nodes[]
+    # estimate 를 끈 팀은 scope 가 이슈 수와 같다고 가정한다 — Linear 문서가 명시하지 않는 전제라,
+    # 설정값(LINEAR_ESTIMATE_VALUES)이나 실제 관측된 estimate 가 있으면 그쪽이 우선한다
+    | ([($team.cycles.nodes[], $past[])
         | select((.scopeHistory | length) > 0 and (.issueCountHistory | length) > 0)
         | select(.scopeHistory[-1] != .issueCountHistory[-1])] | length > 0) as $scopeDiffers
     | (if ($configured | length) > 0 then $configured else $observed end) as $estimateValues
     | (($estimateValues | length) > 0 or $scopeDiffers) as $usesEstimates
     | (if $usesEstimates then "points" else "issues" end) as $unit
-    | ([($team.activeCycle | select(. != null)),
-        ($team.cycles.nodes[] | select(.isFuture))]
+    | ([$team.cycles.nodes[] | select(.isActive or .isFuture)]
        | sort_by(.startsAt) | .[0:3]
        | map({
            value: .id,
@@ -193,9 +205,7 @@ planning_context() {
              end),
            scopeTruncated: ($issues.pageInfo.hasNextPage // false)
          })) as $cycleValues
-    | ([$team.cycles.nodes[] | select(.isPast)]
-       | sort_by(.endsAt) | reverse | .[0:3]
-       | map({
+    | ($past | map({
            number,
            startsAt,
            endsAt,
@@ -480,6 +490,8 @@ case "$verb" in
     parent_input="{}"
     if [ -n "${TRACKER_PARENT:-}" ]; then
       parent_uuid=$(uuid_of "$TRACKER_PARENT")
+      [ -n "$parent_uuid" ] && [ "$parent_uuid" != "null" ] \
+        || die "TRACKER_PARENT '$TRACKER_PARENT' not found — the native parent relation is the only record of it"
       # Linear 는 하위 이슈에 부모의 프로젝트·담당자를 자동 상속하지 않는다 — 부모에 있으면 따라간다
       parent_meta=$(gql 'query($id:String!){issue(id:$id){project{id} assignee{id}}}' \
         "$(jq -n --arg id "$parent_uuid" '{id:$id}')" | jq '.data.issue')
