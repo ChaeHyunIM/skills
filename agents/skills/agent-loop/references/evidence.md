@@ -62,6 +62,9 @@ Audited every open issue 2026-08-01. #46 declared `#42` (open) in its body with 
 in the startable list; edges were missing on #42·#124·#125 and partial on #51·#126·#127, harmless only
 because those blockers had already closed. Registering #46's edge moved it to `is:blocked` immediately.
 Search indexing lags a write by seconds — re-query before concluding an edit did not take.
+This audit is why the body list was dropped on 2026-09-02: with two copies, the native one was the one
+left out, and the body one went stale once blockers landed. The edge is now the only record and
+`to-tickets` reads it back after publishing.
 
 ## Worktrees and environment
 

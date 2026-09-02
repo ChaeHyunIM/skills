@@ -127,7 +127,8 @@ is empty, skip property work entirely. The skill never branches on a platform na
 Present the breakdown as a numbered list. For each ticket:
 
 - **Title**
-- **Blocked by**: which other tickets must complete first, if any
+- **Blocked by**: which other tickets must complete first, if any, and in one clause why (this becomes the
+  native edge plus a sentence of background in the body — never a body list; CONTRACT's [Blocking edges])
 - **What it delivers**: the end-to-end behaviour this ticket makes work
 - **Open design gaps**: the questions from [3] that code and docs could not resolve, if any
 - **미결 정책**: the policy gaps from [5], if any, each with its recommended answer
@@ -186,9 +187,17 @@ left at the adapter default, and omit the third argument when the object is empt
 whole object before creation; if a value became stale, return to the proposal instead of dropping the property
 and publishing a different ticket.
 
-Write each blocking edge into the body's `## Blocked by` **and** the native edge via `add-edge` — both
-are mandatory, per CONTRACT's [Blocking edges]. A ticket with the prose alone reads as startable in every
-listing.
+The native edge is the **only** record of a blocker (CONTRACT's [Blocking edges]) — the body carries no
+blocker list, only the reason as a sentence where it matters. Because there is no second copy to fall back
+on, **verify the edges after publishing**: for every ticket, read them back and compare against the
+approved breakdown.
+
+```bash
+"$TRACKER" blockers <id>     # must list exactly the approved blockers for <id>
+```
+
+A mismatch — a missing edge, or one pointing at the wrong ticket — is fixed on the spot with `add-edge`
+and re-read; never report the run done while a ticket's edges differ from the breakdown the user approved.
 
 `create` puts every published ticket in `ready`, **blocked ones included** — the state says the spec is
 complete, not that work can start today. Startability comes from the edges.
@@ -239,8 +248,7 @@ decision-rich parts and note briefly that it came from a prototype.
 
 - [ ] 사람이 눈과 손으로 확인 가능한 기준만.
 
-## Blocked by
-
-- 이 티켓을 막는 티켓 각각의 참조, 또는 "None — can start immediately".
-
 </issue-template>
+
+블로커 목록은 본문에 쓰지 않는다 — 네이티브 엣지가 유일한 기록이다. 막히는 이유가 자명하지 않으면 그 이유만
+관련 절에 한 문장으로 남긴다("YOU-70 의 schema 컬럼을 읽으므로 그 PR 이 merge 된 뒤 시작").

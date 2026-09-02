@@ -60,9 +60,6 @@ Implementation progress:
    excluded from the recommendation — list them, never drop them: they become fireable minutes after
    their blocker is signed and landed.
    If dependencies or priority are visible, mark **one recommendation**.
-
-   A candidate whose body names a blocker its native edges lack has a broken listing: register the missing
-   edge before moving on — CONTRACT's [Blocking edges].
 4. **Ask "which issue, and in what direction?" and wait. Stop here.**
 5. Once confirmed, run [Execution] for that `<N>`.
 
@@ -78,10 +75,13 @@ instructions).
 
 ## 2. Blocker gate (fresh only)
 
-If the ticket body's `## Blocked by` names other tickets, check each blocker's **actual state — never its
-loop state**. Loop states are human-edited and lag. The truth is the ticket's open/closed plus its PR:
+Read the ticket's blockers from the native edges — the only record of them (CONTRACT's [Blocking edges]);
+a blocker list in an older ticket's body is stale prose, not an input. Then check each blocker's **actual
+state — never its loop state**. Loop states are human-edited and lag. The truth is the ticket's open/closed
+plus its PR:
 
 ```bash
+"$TRACKER" blockers <N>                # [{number,state}] — the blockers
 "$TRACKER" show <blocker>              # .state — open or closed
 "$TRACKER" pr-for <blocker> --merged
 ```

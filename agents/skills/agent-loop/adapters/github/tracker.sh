@@ -10,8 +10,8 @@
 # Verbs (all JSON on stdout unless noted):
 #   list <state>              issues in one loop state: [{number,title,body,updatedAt}]
 #   list-startable            'ready' issues with no open native blocker: [numbers].
-#                             Ordering hint only — the index lags writes and misses
-#                             body-only edges; implement's blocker gate is the verdict.
+#                             Ordering hint only — the search index lags writes;
+#                             implement's blocker gate reads `blockers <id>` and is the verdict.
 #   show <id>                 {number,title,body,state,labels,url}
 #   blockers <id>             native dependency edges: [{number,state}]
 #   add-edge <id> <blocker>   register a native blocked-by edge

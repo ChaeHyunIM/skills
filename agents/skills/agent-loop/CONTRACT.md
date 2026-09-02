@@ -23,7 +23,7 @@ One name per thing. The four skills use only this vocabulary.
 |---|---|
 | **tracker** | The platform holding the loop's tickets (GitHub Issues, Linear, …), reached only through the adapter |
 | **base** | The branch this PR directly targets (`gh pr view --json baseRefName`). Never assumed |
-| **blocker** | Another ticket named in this ticket's `## Blocked by` section |
+| **blocker** | Another ticket registered as a native blocked-by edge on this ticket (`blockers <id>`) |
 | **finding** | One item produced by the configured code-review skill |
 | **round** | One run of the configured review-round skill |
 
@@ -71,7 +71,7 @@ adapter covers. Adapter output is JSON on stdout unless a verb says otherwise.
 | Verb | Contract |
 |---|---|
 | `list <state>` | open tickets in one loop state: `[{number,title,body,updatedAt}]` |
-| `list-startable` | `ready` tickets with no open native blocker: `[numbers]`. **Ordering hint only** — the index lags writes and misses body-only edges; `implement`'s blocker gate is the verdict |
+| `list-startable` | `ready` tickets with no open native blocker: `[numbers]`. **Ordering hint only** — the listing index lags writes; `implement`'s blocker gate reads `blockers <id>` per ticket and is the verdict |
 | `show <id>` | `{number,title,body,state,labels,url}` — `state` is the platform's open/closed |
 | `blockers <id>` | native dependency edges with their open/closed state: `[{number,state}]` |
 | `add-edge <id> <blocker>` | register a native blocked-by edge |
@@ -133,24 +133,26 @@ delegation and bounces to `blocked` — the human signed both PRs without knowin
 
 ## Blocking edges
 
-Every blocker is recorded **twice, and both are mandatory** — the two copies have different readers:
-
-| Where | Read by |
-|---|---|
-| `## Blocked by` in the ticket body | humans · `implement`'s blocker gate |
-| the tracker's native dependency edge | `list-startable` · `blockers` |
-
-Body prose is invisible to structured queries, so a ticket carrying the body edge alone reads as
-*startable* in every listing. Whoever notices a missing edge registers it on the spot:
+The tracker's **native dependency edge is the single source of truth** for blocked-ness. Every reader —
+`list-startable`, `implement`'s blocker gate, a human opening the ticket (both GitHub and Linear render
+blocked-by in the issue sidebar) — reads that edge, and only that edge:
 
 ```bash
-"$TRACKER" add-edge <N> <blocker>
+"$TRACKER" add-edge <N> <blocker>   # write
+"$TRACKER" blockers <N>             # read — never the raw platform API
 ```
 
-Always read edges through `blockers <id>`, never the raw platform API.
+**The body carries no blocker list.** A `## Blocked by` section was once a mandatory second copy; it went
+stale the moment a blocker landed, because nothing rewrote it, and every agent had to reconcile the two.
+Neither the body nor the loop state duplicates the edge — a second copy of the same fact is the one that
+drifts. What the body *may* carry is the **reason** an edge exists, as one sentence of background in the
+relevant section ("YOU-70 의 schema 컬럼을 읽으므로 그 PR 이 merge 된 뒤 시작") — a reason stays true after
+the blocker lands, a list does not.
 
-**State never carries blocked-ness** — that would be a third copy of the same fact, and the third copy is
-the one that drifts. Merging or splitting tickets moves the edges too, not just the prose.
+Because the edge is the only copy, a missing `add-edge` is a silent defect: the ticket reads as startable
+everywhere. `to-tickets` verifies every published ticket's edges through `blockers <id>` before it reports
+done. Whoever else notices a missing edge registers it on the spot. Merging or splitting tickets moves the
+edges too.
 
 ## Worktree convention
 
