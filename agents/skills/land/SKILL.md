@@ -15,7 +15,7 @@ CONTRACT's [Tracker adapter] before the first tracker call.
 |---|---|
 | Queue membership | the tickets the human named as arguments, or picked from the `awaiting-review` queue in [1] |
 | State transition | `awaiting-review` → ticket completed by the merge · valve: → `blocked` |
-| Deliverable | merged PRs, a resolution comment on each conflicted PR, tidied worktrees, one chat report |
+| Deliverable | merged PRs, a resolution comment on each conflicted PR, one chat report |
 | Never | merge a ticket the human did not name or confirm this run · resolve an intent collision · `--force` |
 
 This skill is human-fired only, so **the invocation itself is the merge
@@ -34,8 +34,7 @@ Drain progress:
 - [ ] 2  Order the queue
 - [ ] 3  Present the plan, ask only on surprise
 - [ ] 4  Drain item by item: align → sync → resolve → verify → merge
-- [ ] 5  Tidy merged worktrees — `tidy-merged`
-- [ ] 6  Report
+- [ ] 5  Report
 ```
 
 ## 1. Collect the queue
@@ -90,8 +89,8 @@ BASE=$(gh pr view <PR> --json baseRefName -q .baseRefName)   # read fresh: an ea
 ```
 
 **b. Sync with the base.** `git merge origin/$BASE`, then a plain `git push` — an unpushed
-sync commit leaves the merged remote SHA behind the local HEAD, and [5]'s tidy pass then
-cannot prove the worktree is safe to delete.
+sync commit leaves the merged remote SHA behind the local HEAD, so what GitHub merges is not
+what the worktree holds.
 
 **c. Conflicts →** [Resolve] below.
 
@@ -151,22 +150,14 @@ gh pr comment <PR> --body-file <scratchpad>/land-valve-<N>.md   # both intents, 
 Skip everything queued above this PR, continue with independent items. The valve is a report,
 not a question — the decision comes back as the human's next instruction.
 
-## 5. Tidy merged worktrees
-
-After the last item lands, invoke the `tidy-merged` skill. Its script deletes a worktree only
-when the PR is `MERGED` **and** the local HEAD equals the SHA GitHub recorded at merge — so
-bounced (valve) and held items, whose PRs are still OPEN, survive untouched, and nothing needs
-guarding here. Sessions are never deleted; the script only names the orphaned ones.
-
-This is why CONTRACT's "keep the worktree until the PR merges" ends here: the merge just
-happened, and the tidy pass is its cleanup.
-
-## 6. Report
+## 5. Report
 
 Chat, Korean, in drain order — one line per item: 머지됨 / 보류(사유) / 반송(밸브, PR 코멘트
-링크). Conflicted items link their resolution comment. Then the tidy summary (정리된 브랜치,
-남은 세션). Close with the queue's end state; a non-empty remainder is the headline, not a
-footnote.
+링크). Conflicted items link their resolution comment. Close with the queue's end state; a
+non-empty remainder is the headline, not a footnote.
+
+Worktrees are left in place. This run's sessions are still open on them, so cleanup belongs to
+a separate `tidy-merged` after the human closes those sessions — not to the tail of this run.
 
 ## Guardrails
 
