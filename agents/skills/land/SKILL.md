@@ -11,17 +11,20 @@ Merge the tickets the human names, in one run: order, sync, resolve, verify, mer
 worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
 CONTRACT's [Tracker adapter] before the first tracker call.
 
+**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for the shared PR evidence,
+remaining-condition approval, checkbox-write and post-merge comment rules.
+
 | | |
 |---|---|
 | Queue membership | the tickets the human named as arguments, or picked from the `awaiting-review` queue in [1] |
 | State transition | `awaiting-review` → ticket completed by the merge · valve: → `blocked` |
-| Deliverable | merged PRs, a resolution comment on each conflicted PR, one chat report |
+| Deliverable | merged PRs, issue checkboxes, resolution comments where needed, PR + issue records for accepted remaining conditions, one chat report |
 | Never | merge a ticket the human did not name or confirm this run · resolve an intent collision · `--force` |
 
 This skill is human-fired only, so **the invocation itself is the merge
 signature**: the arguments — or the pick made in [3] — are the human's judgment, and this skill
-only executes it. [3] asks a question only about information born after the signature — never to
-re-collect the judgment itself. That is what makes `land` the sanctioned exception to CONTRACT's
+only executes it. [3] asks once about surprises and remaining 완료 조건 not already explicitly accepted — never to
+re-collect the judgment for unaffected items. That is what makes `land` the sanctioned exception to CONTRACT's
 "never merge": it merges nothing the human has not named or picked in this very run.
 
 ## Progress checklist
@@ -30,11 +33,11 @@ Copy this into your response and check items off as you go.
 
 ```
 Drain progress:
-- [ ] 1  Collect the queue, pin each PR and worktree
+- [ ] 1  Collect queue, PR/worktree, fresh 완료 조건 and current PR verification
 - [ ] 2  Order the queue
-- [ ] 3  Present the plan, ask only on surprise
-- [ ] 4  Drain item by item: align → sync → resolve → verify → merge
-- [ ] 5  Report
+- [ ] 3  Present plan + remaining conditions; confirm exceptions once for the whole queue
+- [ ] 4  Drain: align → sync → resolve → typecheck → write issue checks → merge → record accepted gaps
+- [ ] 5  Report remaining conditions first, with PR and issue record links
 ```
 
 ## 1. Collect the queue
@@ -48,6 +51,9 @@ Drain progress:
   [3], where the human picks — that pick is the signature. Nothing is merged that the human does not
   name there.
 - Resolve each ticket's PR with `"$TRACKER" pr-for <N>`.
+- Read `"$TRACKER" criteria <N>` and the PR body's `## 완료 조건 검증`. Read round comments when
+  present; a review round is not a prerequisite. Missing/changed conditions or missing/stale evidence
+  become 미검증, not an inferred pass. Prepare the per-item results for [3] using the shared reference.
 - Pin `REPO` and each ticket's worktree. A missing worktree (e.g. eaten by a nested `claude -p`)
   is recreated with `prepare-worktree.sh <N> <slug>` (no base argument — rework mode).
 - Empty queue → report that and **stop**.
@@ -60,22 +66,29 @@ of the order, it is why [4] re-syncs per item.
 ## 3. Present the plan — ask only on surprise
 
 Show a Korean table: 순서 · PR · 이슈 · base · `mergeStateStatus` · 예상 충돌 여부 · 리뷰 후
-head 변동, plus any refused items with their reasons.
+head 변동 · 완료 조건(충족/미충족/미검증 counts), plus any refused items with their reasons.
+List each remaining condition with its actual result or verification obstacle. Include anticipated
+uncertainty from base sync/conflict resolution so it is visible before the one confirmation.
 
-The arguments are already the signature, so a second "proceed?" would collect the same judgment
-twice. What the signature cannot cover is information born after it — only that warrants a
-question. A **surprise** is any of: an argument ticket refused in [1] · a predicted conflict ·
-a PR head that moved after its newest round comment (compare the head commit's `committedDate`
-with the newest round comment's `createdAt`, via `gh pr view <PR> --json commits,comments`).
+The arguments are already the signature for normal landing. A **surprise** is any of: an argument
+ticket refused in [1] · a predicted conflict · a PR head that moved after its newest round comment
+(compare commit/comment dates through `gh pr view <PR> --json commits,comments`) · remaining
+미충족/미검증 conditions not already explicitly accepted. Without a round, use the PR verification
+record as the baseline; do not manufacture a missing-review blocker.
 
 - **Argument mode, no surprises**: print the table and proceed without asking.
 - **Argument mode, surprises**: name only the surprising items and ask once whether to include
-  them — the rest of the queue is not re-confirmed.
-- **No-argument mode**: ask **which tickets to land** — the answer is the merge signature. Landing
-  "all of them" is a valid answer, but it must be given, never assumed.
+  them — the rest of the queue is not re-confirmed. Combine all remaining conditions into this same
+  question ("이 항목들이 남아 있는데도 병합할까요?"). Record which exceptions the answer accepts.
+  Accepting a merge never means accepting a checkbox as 충족.
+- **No-argument mode**: show the same remaining conditions with the queue and ask **which tickets to
+  land despite those listed gaps**. The answer is the merge signature and the informed exception approval.
+  Landing "all of them" is valid only when given, never assumed.
 
-**At most one question per run, here.** After [3] there are no further questions — the valve in
-[Resolve] does not ask, it bounces to `blocked` and moves on.
+**At most one question per run, here.** After [3], the intent-collision valve still bounces to `blocked`.
+A new remaining condition outside the approved exception scope leaves the item unmerged and is reported
+without a second question; missing verification alone does not invoke the intent-collision valve.
+Continue independent items. The human can decide about that newly reported scope in the next run.
 
 ## 4. Drain — per item, in order
 
@@ -98,7 +111,22 @@ what the worktree holds.
 A break caused by the resolution is fixed within union-of-intents bounds; a break that needs
 new behaviour to fix is an intent collision — pull the valve.
 
-**e. Merge.**
+**e. Synchronize issue checkboxes, then merge.**
+
+Use the shared reference to reconcile the final tree with the PR verification record; do not rerun the
+full feature checks or declare every overlapping file a failure. Update any stale PR result honestly.
+Re-read conditions via `criteria` and build a complete checks file: true only for evidenced 충족, false
+for 미충족 and 미검증, even when their merge was approved. A changed issue must be reassessed, not
+blindly mapped by old indices. Immediately before merging:
+
+```bash
+"$TRACKER" criteria <N> > <scratchpad>/criteria-<N>.json
+"$TRACKER" check <N> <scratchpad>/criteria-<N>.json <scratchpad>/checks-<N>.json
+```
+
+Read the verified result before merging. Write/read-back failure → leave this PR unmerged and report it;
+do not bypass the adapter. If an explicitly accepted legacy ticket has no conditions, report that gap
+and skip the empty write; never invent checks. Checks remain facts if the following merge fails.
 
 ```bash
 gh pr merge <PR> --rebase   # the trunk is rebase-merge only
@@ -109,6 +137,18 @@ gh pr merge <PR> --rebase   # the trunk is rebase-merge only
 ```bash
 "$TRACKER" landed <N>   # verifies the tracker recorded completion; closes only if automation missed
 ```
+
+If remaining conditions were explicitly accepted and the merge succeeded, post the records required by
+the shared reference: technical condition/status/evidence/approval on the PR and brief natural Korean
+on the issue. Use body files and no teammate mentions:
+
+```bash
+gh pr comment <PR> --body-file <scratchpad>/land-remaining-<N>-pr.md
+"$TRACKER" comment <N> <scratchpad>/land-remaining-<N>-issue.md
+```
+
+Keep the existing resolution comment when applicable. Do not auto-create follow-up tickets. A comment
+failure is a missing record to report/retry, not a failed merge to repeat.
 
 ## Resolve — the conflict discipline
 
@@ -152,8 +192,10 @@ not a question — the decision comes back as the human's next instruction.
 
 ## 5. Report
 
-Chat, Korean, in drain order — one line per item: 머지됨 / 보류(사유) / 반송(밸브, PR 코멘트
-링크). Conflicted items link their resolution comment. Close with the queue's end state; a
+Lead with any conditions left 미충족/미검증 in approved merges, their reasons, and both PR and issue
+comment links. Include failed checkbox writes or missing post-merge records prominently. Then report
+in drain order — one line per item: 머지됨 / 보류(사유) / 반송(밸브, PR 코멘트 링크). Conflicted items
+link their resolution comment. Close with the queue's end state; a
 non-empty remainder is the headline, not a footnote.
 
 Worktrees are left in place. This run's sessions are still open on them, so cleanup belongs to

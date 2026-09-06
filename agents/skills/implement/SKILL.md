@@ -12,10 +12,13 @@ Implement one ticket in an isolated worktree, open a **review-ready PR**, and st
 worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
 CONTRACT's [Tracker adapter] before the first tracker call.
 
+**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for 완료 조건 authoring,
+verification, PR evidence and land-only issue checkboxes.
+
 | | |
 |---|---|
 | State transition | `ready` → `in-progress` → `awaiting-review` |
-| Deliverable | one non-draft PR |
+| Deliverable | one non-draft PR with current 완료 조건 verification in its body |
 | Never | review · merge · push to the base branch |
 
 ## Entry modes
@@ -30,14 +33,14 @@ Copy this into your response and check items off as you go.
 
 ```
 Implementation progress:
-- [ ] 1  Load ticket, detect fresh vs rework
+- [ ] 1  Load ticket and 완료 조건, plan verification, detect fresh vs rework
 - [ ] 2  Blocker gate (fresh only)
 - [ ] 3  Claim the state
 - [ ] 4  Resolve the base
 - [ ] 5  Prepare the worktree
 - [ ] 6  Implement (fetch the Figma node first if the issue has a design)
-- [ ] 7  Typecheck gate — repeat until green
-- [ ] 8  comment-cleaner → commit → verify base both ways → push → PR
+- [ ] 7  Typecheck, then verify 완료 조건 → 충족 / 미충족 / 미검증 with evidence
+- [ ] 8  comment-cleaner → commit → verify base both ways → push → PR with verification section
 - [ ] 9  Land the state and stop
 ```
 
@@ -67,11 +70,14 @@ Implementation progress:
 
 ```bash
 "$TRACKER" show <N>
+"$TRACKER" criteria <N>
 git branch --list "agent/issue-<N>-*"
 ```
 
 No branch → **fresh start**. Branch exists → **rework** (continue on it, applying this turn's extra
-instructions).
+instructions). Select a verification route for each condition now. Missing or ambiguous conditions
+go through [When stuck] before coding or claiming `in-progress`; its `blocked` transition is the explicit
+exception to the normal claim sequence. Keep condition progress in the session, not in issue checkboxes.
 
 ## 2. Blocker gate (fresh only)
 
@@ -143,16 +149,22 @@ routeTree copy.
 - **Design-backed UI**: if the issue has a design section with Figma node links, fetch the node
   through the Figma MCP — its design-context tool, plus its screenshot tool for visuals — **before
   writing any UI code**. Use the connected Figma MCP's actual tools; never guess at tool names. The
-  node is the design source of truth — on any visual or UX question **the node beats the issue text**;
-  the issue's "Figma가 답하지 않는 것" list covers only what the node does not show. If no Figma MCP
+  node is the source for layout and styling. If its behaviour conflicts with approved policy or
+  완료 조건, use [When stuck] rather than silently picking a winner. The issue's "Figma가 답하지 않는 것"
+  list covers only what the node does not show. If no Figma MCP
   is connected or the node cannot be fetched, treat it as stuck ([When stuck]) rather than
   improvising the UI from the issue prose.
 - Follow the active project instructions (`AGENTS.md`, `CLAUDE.md`, or the host equivalent).
-- **Skip tests by default.** Write them only when the issue explicitly asks.
+- Writing new tests and verifying 완료 조건 are separate decisions. Use the shared reference
+  and project test runner; choose new tests when they provide necessary or repeatable verification.
 
-## 7. Typecheck gate
+## 7. Typecheck and 완료 조건 verification
 
 Fix and repeat until `pnpm check-types:<app>` passes. Never call `tsc` directly.
+Then verify every condition by the chosen route and record 충족 / 미충족 / 미검증 with evidence or reason
+as defined in the shared reference. Fix clear implementation failures within scope. An environment gap
+may remain 미검증 in a review-ready PR; missing policy still uses [When stuck]. Do not claim verification
+merely because code compiles. Keep the results for the PR body; do not call `tracker check`.
 
 ## 8. Commit and PR
 
@@ -178,17 +190,22 @@ git merge-base --is-ancestor origin/<base> HEAD || echo "base moved — needs ca
 ```
 
 If it moved, catch up with `git merge origin/<base>` **before pushing**, then **re-run the typecheck
-gate**.
+gate and reverify affected 완료 조건**.
 
 ```bash
 git push -u origin agent/issue-<N>-<slug>
 LINK=$("$TRACKER" link-line <N>)   # the line that binds PR → ticket; never hand-write it
-gh pr create --base <base> --title "<제목>" \
-  --body "$(printf '%s\n\nbase: %s\n\n<한 줄 요약>' "$LINK" <base>)"
+gh pr create --base <base> --title "<제목>" --body-file <scratchpad>/pr-<N>.md
 ```
 
-**Rework**: the PR already exists, so just push. Do not flip it back to draft — `in-progress`
-already says the code is moving.
+Create the body file before `gh pr create`: preserve the adapter-produced `LINK`, record the base,
+explain the implementation and include `## 완료 조건 검증` using the shared reference template. Identify
+the tested code and environment without claiming a later untested revision. Read the published body back.
+The PR still opens here, after implementation, always non-draft — never earlier for progress tracking.
+
+**Rework**: push, re-read the existing PR body, update its implementation summary and verification
+section, and use `gh pr edit <PR> --body-file <file>`. Preserve its binding and human-authored content.
+Do not flip it back to draft — `in-progress` already says the code is moving.
 
 ## 9. Land the state and stop
 
@@ -200,6 +217,9 @@ Report the PR link and **stop**. Tell the user to run the configured review proc
 re-run `implement <N>` with instructions.
 
 ## When stuck
+
+A verification-only obstacle after implementation can be recorded as 미검증 in the PR under [7].
+This path is for work that cannot proceed, especially missing or ambiguous requirements.
 
 If you cannot proceed on your own (ambiguous requirements, unresolved types, environment issues):
 

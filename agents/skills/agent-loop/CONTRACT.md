@@ -26,6 +26,12 @@ One name per thing. The four skills use only this vocabulary.
 | **blocker** | Another ticket registered as a native blocked-by edge on this ticket (`blockers <id>`) |
 | **finding** | One item produced by the configured code-review skill |
 | **round** | One run of the configured review-round skill |
+| **완료 조건** | Observable outcomes promised by the issue; `Acceptance criteria` and `검수 기준` are legacy headings only |
+
+The issue owns the conditions; the PR body owns current verification evidence.
+Only `land` updates existing issue checkboxes, immediately before merge.
+A check means verified satisfaction; human merge approval does not turn remaining conditions into passes.
+Read `references/acceptance-criteria.md` at the relevant skill checkpoint for the shared rules.
 
 ## Loop map
 
@@ -41,7 +47,7 @@ The merge judgment always terminates at the human — and the human expresses it
 and naming (or picking) the tickets to merge**. `land` is human-fired only, so its arguments — or
 its queue pick — *are* the merge signature; it asks one further question only when a PR diverged
 from what the signer could have known (a refused ticket, a predicted conflict, a head that moved
-after review). There is no signature state to attach beforehand — recording the same judgment twice
+after review, or remaining 미충족/미검증 conditions). There is no signature state to attach beforehand — recording the same judgment twice
 (a marker, then the command) was duplication, and the marker was the copy that went stale.
 
 ## Tracker adapter
@@ -72,7 +78,9 @@ adapter covers. Adapter output is JSON on stdout unless a verb says otherwise.
 |---|---|
 | `list <state>` | open tickets in one loop state: `[{number,title,body,updatedAt}]` |
 | `list-startable` | `ready` tickets with no open native blocker: `[numbers]`. **Ordering hint only** — the listing index lags writes; `implement`'s blocker gate reads `blockers <id>` per ticket and is the verdict |
-| `show <id>` | `{number,title,body,state,labels,url}` — `state` is the platform's open/closed |
+| `show <id>` | `{number,title,body,state,labels,url,updatedAt}` — `state` is the platform's open/closed |
+| `criteria <id>` | Read `{issue,updatedAt,bodyHash,section,items:[{index,text,checked}]}` through the shared parser |
+| `check <id> <snapshot-file> <checks-file>` | Land-only, full batch checkbox update against the read snapshot; compare text/version and verify preserved body. See `references/acceptance-criteria.md` |
 | `blockers <id>` | native dependency edges with their open/closed state: `[{number,state}]` |
 | `add-edge <id> <blocker>` | register a native blocked-by edge |
 | `transition <id> <state>` | clear **every** loop state marker, then set `<state>` — a ticket is in exactly one state |
@@ -180,9 +188,9 @@ Korean prose in this loop has **two audiences, two registers**:
 - **Ticket bodies and ticket comments** are read by non-developers too (기획·디자인·운영). Apply the
   `korean-output` skill (`~/.agents/skills/korean-output/SKILL.md`) and write so a non-developer can follow:
   no developer-translationese, no compressed jargon chains — say what the user will be able to do and why,
-  and unpack any technical term you cannot avoid in one plain sentence. Code identifiers, API shapes and
-  schema sketches stay verbatim where the template calls for them (서버 구현사항 etc.); the prose around
-  them is what must read plainly.
+  and unpack any technical term you cannot avoid in one plain sentence. Describe outcomes, agreed rules
+  and scope in natural language. Include technical contracts only when the implementer cannot choose them;
+  file-level plans, chosen API shapes and schema sketches belong in the PR.
 - **PR titles/bodies, round comments, commit messages** are developer-to-developer — technical register
   and agent-style precision are fine there.
 

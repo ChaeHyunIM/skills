@@ -16,10 +16,13 @@ only this outer loop applies findings and writes to GitHub.
 worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
 CONTRACT's [Tracker adapter] before the first tracker call.
 
+**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for 완료 조건 authoring,
+verification, PR evidence and land-only issue checkboxes.
+
 | | |
 |---|---|
 | State transition | `awaiting-review` → `in-review` → `awaiting-review` or `blocked` |
-| Deliverable | **one loop-authored** PR summary comment. Raw engine artifacts remain in the scratchpad |
+| Deliverable | one loop-authored PR summary comment + update of the PR body’s 완료 조건 검증 section; raw engine artifacts stay in the scratchpad |
 | Never | judge mergeability · run `ultra` · trigger either engine outside a human-fired round |
 
 ## Progress checklist
@@ -28,12 +31,13 @@ Copy this into your response and check items off as you go.
 
 ```
 Round progress:
-- [ ] 1  Resolve PR and worktree, pin ROUND_BASE, BASE and REPO
+- [ ] 1  Resolve PR/worktree and read issue 완료 조건 + PR evidence; pin ROUND_BASE, BASE and REPO
 - [ ] 2  Claim the state, fix the round number
 - [ ] 3  Fire Claude and Codex on ROUND_BASE, arm the joint monitor, end the turn
 - [ ] 4  (on notification) Extract, sanity-check and deduplicate both finding lists
+- [ ] 4a Compare every 완료 조건 with implementation and evidence, including omissions
 - [ ] 5  Disposition findings → comment-cleaner → typecheck → commit → push
-- [ ] 6  Sync with the base, then typecheck against the merged tree
+- [ ] 6  Sync base, typecheck, reverify affected 완료 조건 and update the PR body
 - [ ] 7  Compute the round range → write the PR comment
 - [ ] 8  Land the label and stop
 ```
@@ -79,6 +83,9 @@ COMPARISON_REF="origin/$BASE"
 Pin `ROUND_BASE` **right after the pull, before the review runs**. Everything committed from here on is
 this round's work and everything below it is not. It is the only thing that makes [7]'s compare link point
 at this round alone.
+
+Read `"$TRACKER" criteria <N>` and the PR body before the engines run. Keep that condition snapshot
+for the outer loop's comparison; the engines' defect lists do not establish condition coverage.
 
 ## 2. Claim the state, fix the round number
 
@@ -199,6 +206,14 @@ Structured shape:
   at findings or disposition only one engine. Report the failure, leave the state at `in-review`, and
   say what to retry. Each engine's `.err` file holds its stderr.
 
+## 4a. Compare 완료 조건
+
+The outer loop compares every original condition with implementation and PR evidence using the shared
+reference. Check omissions even if both engines report zero findings. Add concrete missing behaviour to
+the combined working list as source `완료 조건`; do not invent a file/line for absent code. Record a
+verification-only gap in the PR body as 미검증 with its reason, not as an invented engine finding.
+Unresolved policy uses the existing 보류 path. Never change issue checkboxes here.
+
 ## 5. Disposition the findings
 
 Every finding gets exactly one disposition, decided here and reported in [7]:
@@ -245,7 +260,12 @@ pnpm check-types:<app>
 - **Migrations on both sides** → the numbers never conflict as text, but the apply order does. Name the
   colliding **files**, not the commits that introduced them.
 
-## 7. The round comment — the round's only loop-authored deliverable
+Before [7], reverify conditions affected by fixes or the base sync. Re-read the PR body, update only
+its current `## 완료 조건 검증` section through `gh pr edit <PR> --body-file <file>`, preserve the
+binding and other content, and read back the result. Add the section to legacy PRs if absent. Unperformed
+checks remain 미검증; preserve the actual tested version for results carried forward.
+
+## 7. The round comment — the round's only new PR comment
 
 After the round's last push, compute its range:
 

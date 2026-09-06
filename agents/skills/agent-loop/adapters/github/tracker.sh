@@ -12,7 +12,9 @@
 #   list-startable            'ready' issues with no open native blocker: [numbers].
 #                             Ordering hint only — the search index lags writes;
 #                             implement's blocker gate reads `blockers <id>` and is the verdict.
-#   show <id>                 {number,title,body,state,labels,url}
+#   show <id>                 {number,title,body,state,labels,url,updatedAt}
+#   criteria <id>             완료 조건과 쓰기 대조용 스냅샷
+#   check <id> <snapshot-file> <checks-file>  land에서만 호출하는 체크 일괄 갱신
 #   blockers <id>             native dependency edges: [{number,state}]
 #   add-edge <id> <blocker>   register a native blocked-by edge
 #   transition <id> <state>   clear every loop state marker, set <state>
@@ -51,9 +53,24 @@ ALL_LABELS=(ready-for-agent agent-in-progress agent-awaiting-review agent-in-rev
 
 repo() { gh repo view --json nameWithOwner -q .nameWithOwner; }
 
+# 조건 해석과 쓰기 전후 검증은 두 플랫폼이 같은 구현을 쓴다.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/criteria.sh"
+
+criteria_fetch() {
+  gh issue view "$1" --json number,body,updatedAt
+}
+
+criteria_write() {
+  gh issue edit "$1" --body-file "$2" > /dev/null
+}
+
 verb="${1:-}"; shift || true
 
 case "$verb" in
+
+  criteria|check)
+    criteria_dispatch "$verb" "${1:?usage: tracker criteria <id> | check <id> <snapshot-file> <checks-file>}" "${@:2}"
+    ;;
 
   list)
     state="${1:?usage: tracker list <state>}"
@@ -68,8 +85,8 @@ case "$verb" in
 
   show)
     id="${1:?usage: tracker show <id>}"
-    gh issue view "$id" --json number,title,body,state,labels,url \
-      --jq '{number,title,body,state,url,labels:[.labels[].name]}'
+    gh issue view "$id" --json number,title,body,state,labels,url,updatedAt \
+      --jq '{number,title,body,state,url,updatedAt,labels:[.labels[].name]}'
     ;;
 
   blockers)

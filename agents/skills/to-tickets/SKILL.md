@@ -13,18 +13,22 @@ by the `implement` skill.
 the output convention of the loop these tickets enter live there. Resolve `$TRACKER` per CONTRACT's
 [Tracker adapter] before publishing.
 
+**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for 완료 조건 authoring,
+verification, PR evidence and land-only issue checkboxes.
+
 ## A ticket binds its truths, it does not restate them
 
-**Each ticket is a complete spec for its unit of work.** The implementing agent reads only the issue body,
-and that body's information density is the ceiling on implementation quality. The way to raise density is
-binding, not copying:
+**Each ticket defines the outcomes, boundaries and constraints of its unit of work.** Explore the
+codebase deeply enough to establish feasibility and dependencies, but write the issue as natural-language
+What. The implementer chooses How and explains it in the PR. Bind supporting truths instead of copying
+a code investigation into the issue:
 
 - **Design/UX truth = the Figma node** (when the surface has a separate design, e.g. a mobile app). The node
   doubles as the PRD: its frames and flows say what the feature is.
 - **Domain and current-behaviour truth = the code and docs** (CONTEXT.md, ADRs).
 - **The ticket body = the goal, pointers to both truths, and the delta** — everything neither truth
-  expresses: what the design doesn't answer (states, edge cases, data rules) and what the code doesn't yet
-  contain (new API contracts, schema impact, domain rules).
+  expresses: required behaviour, states, data rules and scope boundaries. Carry a technical contract only
+  when it is already required by a consumer or an external integration, not merely an implementation idea.
 
 Never copy design content into the ticket as prose or screenshots — it breaks the single source of truth
 and goes stale on the first design edit. Link the node; the implementer fetches it live.
@@ -36,7 +40,7 @@ Ticket breakdown progress:
 - [ ] 1  Gather context
 - [ ] 2  Explore the codebase (optional)
 - [ ] 3  Gather design truth (only if designed UI is involved)
-- [ ] 4  Draft vertical slices and their blocking edges
+- [ ] 4  Draft vertical slices and edges; write 완료 조건 and compare goal ↔ conditions
 - [ ] 5  Pull the policy gaps out of every slice
 - [ ] 6  Quiz the user — iterate until approved
 - [ ] 7  Publish to the tracker in dependency order
@@ -78,6 +82,10 @@ Skip for pure backend/infra work. When a slice touches a UI surface that has a s
 **Read `~/.agents/skills/to-tickets/references/slicing-rules.md` and cut according to it.** It defines the
 vertical slice, hard vs soft blocking edges, the ban on forward-pointing dependencies, migration hoisting,
 and the expand–contract exception for wide refactors.
+
+Draft each ticket's 완료 조건 using the shared reference: observable results, goal ↔ conditions
+comparison, and a pre-merge verification route. Fold genuinely post-release observations into owned
+follow-up tickets and their native edges in the proposed breakdown; do not lose the original scope.
 
 Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A
 ticket with no blockers can start immediately.
@@ -130,6 +138,7 @@ Present the breakdown as a numbered list. For each ticket:
 - **Blocked by**: which other tickets must complete first, if any, and in one clause why (this becomes the
   native edge plus a sentence of background in the body — never a body list; CONTRACT's [Blocking edges])
 - **What it delivers**: the end-to-end behaviour this ticket makes work
+- **완료 조건**: show the actual checkbox text, including backend-only outcomes where applicable
 - **Open design gaps**: the questions from [3] that code and docs could not resolve, if any
 - **미결 정책**: the policy gaps from [5], if any, each with its recommended answer
 - **Tracker properties**: each proposed native value (or `unset`) with one short reason; omit when the adapter
@@ -204,14 +213,13 @@ complete, not that work can start today. Startability comes from the edges.
 
 **Ticket bodies are written in Korean, for non-developers too** — per CONTRACT's [Output convention],
 apply the `korean-output` skill and avoid developer-translationese: a 기획자·디자이너 reading only `## 목표`
-and `## Acceptance criteria` must understand what ships and how to check it. Technical sections
-(서버 구현사항, API 계약) keep their precision; the prose around them reads plainly. Do not close or
-modify the parent ticket.
+and `## 완료 조건` must understand what ships and how to check it. Backend-only tickets may state
+developer-observable outcomes. Do not close or modify the parent ticket.
 
-Avoid specific file paths and code snippets — they go stale fast. Two exceptions, both decision-rich by
-nature: API contracts in 서버 구현사항, and a snippet a prototype produced that encodes a decision more
-precisely than prose can (state machine, reducer, schema, type shape) — inline it trimmed to the
-decision-rich parts and note briefly that it came from a prototype.
+Avoid file-by-file changes, function/component assignments, chosen endpoint/type shapes and code snippets
+in the issue. If an existing consumer, external integration or approved decision requires an exact contract,
+link its source under 정책과 제약 and quote only what the implementer must preserve. Put implementation
+choices, code structure and verification commands in the PR.
 
 <issue-template>
 
@@ -220,33 +228,33 @@ decision-rich parts and note briefly that it came from a prototype.
 이 티켓이 동작하게 만드는 종단 간 동작 — 사용자 관점에서, 랜딩하면 무엇이 데모 가능해지는가.
 레이어별 구현 목록이 아니다. 확정한 범위 밖 항목과 맞닿으면 그 경계 한 줄로 닫는다.
 
-## 정책
+## 제공할 동작
 
-이 티켓이 전제하는 제품 규칙 중 코드와 디자인만 봐서는 알 수 없는 것. 규칙 하나에 불릿 하나,
-각각 그 답의 출처(코드·문서·트래커 코멘트 링크). 정할 게 없었으면 생략.
+사용자나 시스템이 할 수 있어야 하는 일. 주요 흐름과 필요한 예외 동작을 자연어로 적는다.
+어떤 파일·함수·컴포넌트를 고칠지는 구현자가 판단한다.
 
-## 디자인
+## 정책과 제약
 
-디자인된 UI 가 있을 때만. 없으면 생략.
+구현 방식과 관계없이 지켜야 하는 제품 규칙과 이미 정해진 외부 계약. 규칙 하나에 불릿 하나,
+각각 답의 출처(코드·문서·트래커 코멘트 링크). 별도 규칙이 없으면 생략.
+
+## 디자인·참고
+
+디자인이나 참고 문서가 있을 때만. 없으면 생략.
 
 - **Figma node**: 링크. 디자인/UX 의 단일 진실 — 구현자가 구현 시점에 MCP 로 노드를 가져오고,
-  시각·UX 질문에서는 노드가 이 이슈 텍스트를 이긴다. 스크린샷을 붙이거나 디자인을 산문으로 옮기지 않는다.
+  배치·스타일은 노드를 따른다. 동작·정책이 완료 조건과 충돌하면 먼저 결정받는다.
+  스크린샷을 붙이거나 디자인을 산문으로 옮기지 않는다.
 - **Figma가 답하지 않는 것**: 갭 목록 — 상태(로딩/빈/에러), 인터랙션 엣지 케이스, 데이터 규칙,
   그려지지 않은 카피. 갭 하나에 불릿 하나, 각각 답과 그 답의 출처(코드·문서·사용자 결정).
 
-## 서버 구현사항
+## 완료 조건
 
-이 슬라이스를 위해 백엔드가 제공해야 하는 것: API 계약(엔드포인트, 요청/응답 형태), 도메인 규칙,
-스키마 영향. 계약은 결정이 밀집한 영역이므로 정확하게 적는다 — 요청/응답의 타입 수준 스케치 환영.
+- [ ] 합의된 목표·정책을 충족했는지 판단할 수 있는 관찰 결과.
 
-## UI 구현
-
-프론트가 디자인을 어떻게 실현하는가: UI 가 사는 라우트/화면, 재사용할 기존 컴포넌트(파일 경로가 아니라
-도메인 용어 이름), 상태별 렌더링, Figma 컴포넌트 → 코드 컴포넌트 매핑 힌트.
-
-## Acceptance criteria
-
-- [ ] 사람이 눈과 손으로 확인 가능한 기준만.
+관찰 결과는 필수이고 전제·행동은 필요할 때만 적는다. 사용자 표면이 있으면 사용자가 겪는 결과를,
+백엔드·스키마 전용 티켓이면 개발자가 확인할 결과를 적는다. 공유 reference의 예시를 따르며,
+타입 체크나 파일 수정 목록으로 대체하지 않는다.
 
 </issue-template>
 

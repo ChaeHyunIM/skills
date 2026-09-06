@@ -21,6 +21,10 @@
 #   bootstrap   create the "Agent" label group and its five `agent:*` labels
 #               if missing. Run once per workspace.
 #
+# 완료 조건 명령:
+#   criteria <id>             완료 조건과 쓰기 대조용 스냅샷
+#   check <id> <snapshot-file> <checks-file>  land에서만 호출하는 체크 일괄 갱신
+#
 # 공통 속성 명령:
 #   planning-context
 #               쓰기 가능한 네이티브 속성과 현재 Cycle 근거를 제공한다.
@@ -30,8 +34,10 @@
 # Config (sourced from <repo>/.claude/agent-loop/config):
 #   LINEAR_TEAM_KEY   required — the team whose tickets the loop works (e.g. YOU)
 #   STATUS_READY / STATUS_STARTED / STATUS_REVIEW / STATUS_DONE
-#                     optional — workflow status NAMES; defaults below match
-#                     Linear's stock names except STATUS_REVIEW
+#                     optional — workflow status NAMES; the defaults below are
+#                     Linear's stock names. This workspace also has a custom
+#                     "In Review / QA" — the loop must not use it; review states
+#                     land on plain "In Review".
 #   LINEAR_ESTIMATE_VALUES
 #                     선택 — 팀에서 활성화한 Estimate scale의 정수 목록.
 #                     Linear 공개 API는 이 설정을 노출하지 않으므로, 값이 없으면
@@ -65,7 +71,7 @@ fi
 TEAM_KEY="$LINEAR_TEAM_KEY"
 STATUS_READY="${STATUS_READY:-Todo}"
 STATUS_STARTED="${STATUS_STARTED:-In Progress}"
-STATUS_REVIEW="${STATUS_REVIEW:-In Review / QA}"
+STATUS_REVIEW="${STATUS_REVIEW:-In Review}"
 STATUS_DONE="${STATUS_DONE:-Done}"
 
 STATES=(ready in-progress awaiting-review in-review blocked)
@@ -345,9 +351,31 @@ project_issue='{number:.identifier,title:.title,body:(.description//""),
   state:(if .state.type=="completed" or .state.type=="canceled" or .state.type=="duplicate" then "CLOSED" else "OPEN" end),
   labels:[.labels.nodes[].name],url:.url,updatedAt:.updatedAt}'
 
+# 조건 해석과 쓰기 전후 검증은 두 플랫폼이 같은 구현을 쓴다.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/criteria.sh"
+
+criteria_fetch() {
+  gql 'query($id:String!){issue(id:$id){id identifier description updatedAt}}' \
+    "$(jq -n --arg id "$(ident "$1")" '{id:$id}')" \
+    | jq '.data.issue | {id,number:.identifier,body:(.description//""),updatedAt}'
+}
+
+criteria_write() {
+  local issue_id
+  issue_id=$(jq -er '.id' "$3")
+  gql 'mutation($id:String!,$i:IssueUpdateInput!){issueUpdate(id:$id,input:$i){success}}' \
+    "$(jq -n --arg id "$issue_id" --rawfile body "$2" '{id:$id,i:{description:$body}}')" \
+    | jq -e '.data.issueUpdate.success == true' > /dev/null \
+    || die "criteria update failed"
+}
+
 verb="${1:-}"; shift || true
 
 case "$verb" in
+
+  criteria|check)
+    criteria_dispatch "$verb" "${1:?usage: tracker criteria <id> | check <id> <snapshot-file> <checks-file>}" "${@:2}"
+    ;;
 
   bootstrap)
     labels=$(agent_labels)
@@ -397,7 +425,7 @@ case "$verb" in
   show)
     id=$(ident "${1:?usage: tracker show <id>}")
     gql "query(\$id:String!){issue(id:\$id){$ISSUE_FIELDS}}" "$(jq -n --arg id "$id" '{id:$id}')" \
-      | jq ".data.issue | $project_issue | del(.updatedAt)"
+      | jq ".data.issue | $project_issue"
     ;;
 
   blockers)
