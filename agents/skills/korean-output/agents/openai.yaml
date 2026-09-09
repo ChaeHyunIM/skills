@@ -1,0 +1,6 @@
+interface:
+  display_name: "Korean Output"
+  short_description: "한 번에 읽히는 자연스러운 한국어 출력 규칙"
+  default_prompt: "Use $korean-output to rewrite this Korean prose so it reads in one pass."
+policy:
+  allow_implicit_invocation: false
