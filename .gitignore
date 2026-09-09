@@ -1,0 +1,12 @@
+.DS_Store
+*.log
+
+# 인증 정보 — 절대 커밋 금지
+.env
+.env.*
+**/*credentials*
+**/auth.json
+
+# Python 바이트코드 — 스킬 스크립트 실행 부산물
+__pycache__/
+*.pyc
