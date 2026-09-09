@@ -161,8 +161,10 @@ routeTree copy.
 ## 7. Typecheck and 완료 조건 verification
 
 Fix and repeat until `pnpm check-types:<app>` passes. Never call `tsc` directly.
-Then verify every condition by the chosen route and record 충족 / 미충족 / 미검증 with evidence or reason
-as defined in the shared reference. Fix clear implementation failures within scope. An environment gap
+Then run the **`verify` skill** (`~/.agents/skills/verify/SKILL.md`) with `verify <N> --no-publish`: it
+classifies each condition, runs its route (tests, API, Playwright flow against base and head, argent flow),
+applies the quality gates and renders the marked `## 완료 조건 검증` block plus `results.json`. Record
+충족 / 미충족 / 미검증 with evidence or reason as defined in the shared reference. Fix clear implementation failures within scope. An environment gap
 may remain 미검증 in a review-ready PR; missing policy still uses [When stuck]. Do not claim verification
 merely because code compiles. Keep the results for the PR body; do not call `tracker check`.
 
@@ -199,7 +201,10 @@ gh pr create --base <base> --title "<제목>" --body-file <scratchpad>/pr-<N>.md
 ```
 
 Create the body file before `gh pr create`: preserve the adapter-produced `LINK`, record the base,
-explain the implementation and include `## 완료 조건 검증` using the shared reference template. Identify
+explain the implementation and include the `## 완료 조건 검증` block rendered by `verify` in [7] (markers
+included). After `gh pr create`, upload its media: `node ~/.agents/skills/verify/scripts/evidence-block.mjs
+--results <results.json> --attach-list` → `gh pr edit <PR> --body-file <body> --attach <file>…` (gh ≥ 2.99;
+otherwise leave the text block and say the media stayed local). Identify
 the tested code and environment without claiming a later untested revision. Read the published body back.
 The PR still opens here, after implementation, always non-draft — never earlier for progress tracking.
 

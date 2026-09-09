@@ -260,7 +260,9 @@ pnpm check-types:<app>
 - **Migrations on both sides** → the numbers never conflict as text, but the apply order does. Name the
   colliding **files**, not the commits that introduced them.
 
-Before [7], reverify conditions affected by fixes or the base sync. Re-read the PR body, update only
+Before [7], reverify conditions affected by fixes or the base sync through the `verify` skill
+(`~/.agents/skills/verify/SKILL.md`, `verify --pr <PR>` restricted to the affected conditions); it replaces
+only the marked `## 완료 조건 검증` block. Re-read the PR body, update only
 its current `## 완료 조건 검증` section through `gh pr edit <PR> --body-file <file>`, preserve the
 binding and other content, and read back the result. Add the section to legacy PRs if absent. Unperformed
 checks remain 미검증; preserve the actual tested version for results carried forward.
