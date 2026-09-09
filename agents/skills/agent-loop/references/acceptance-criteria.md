@@ -66,7 +66,7 @@ covers the condition; do not require another tool run just to follow a table. Th
 |---|---|
 | Domain/server behaviour | Existing tests through the project runner, e.g. `pnpm test <path>` |
 | API response | Request to the local/dev service; inspect response and relevant persistence |
-| App screen | `agent-device` on a simulator or authorized device; use a real device if the condition requires it |
+| App screen | `argent` on a simulator or authorized device; use a real device if the condition requires it |
 | Web screen | Available browser automation against the app |
 | Human-applied migration | Verify after the human applies it; until then record 미검증 and the dependency |
 

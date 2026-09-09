@@ -281,24 +281,6 @@
       "installedAt": "2026-07-27T06:45:52.888Z",
       "updatedAt": "2026-07-27T06:45:52.888Z"
     },
-    "agent-device": {
-      "source": "callstack/agent-device",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/callstack/agent-device.git",
-      "skillPath": "skills/agent-device/SKILL.md",
-      "skillFolderHash": "3337b89383fd7b4551a329b8e02ff3f81d5fafe2",
-      "installedAt": "2026-08-05T03:20:26.293Z",
-      "updatedAt": "2026-08-05T03:20:26.293Z"
-    },
-    "dogfood": {
-      "source": "callstack/agent-device",
-      "sourceType": "github",
-      "sourceUrl": "https://github.com/callstack/agent-device.git",
-      "skillPath": "skills/dogfood/SKILL.md",
-      "skillFolderHash": "d081d01713d306595bb0a492ad6d41228eadeef7",
-      "installedAt": "2026-08-05T03:20:26.295Z",
-      "updatedAt": "2026-08-05T03:20:26.295Z"
-    },
     "install-anti-slop": {
       "source": "dmmulroy/anti-slop",
       "sourceType": "github",
