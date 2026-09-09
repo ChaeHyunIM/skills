@@ -319,6 +319,15 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-08-20T01:14:51.638Z",
       "updatedAt": "2026-08-20T01:14:51.638Z"
+    },
+    "show-me": {
+      "source": "humanlayer/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/humanlayer/skills.git",
+      "skillPath": "plugins/show-me/skills/show-me/SKILL.md",
+      "skillFolderHash": "0bdb821a21e793a4f6f82a7078c052154447e5cc",
+      "installedAt": "2026-09-09T02:18:53.874Z",
+      "updatedAt": "2026-09-09T02:18:53.874Z"
     }
   },
   "dismissed": {
