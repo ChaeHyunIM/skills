@@ -1,12 +1,13 @@
 ---
 name: implement
-description: Implements a tracker ticket in an isolated git worktree and opens a review-ready PR in Korean, then stops so the human can start a review separately. Handles a fresh start and rework on an existing agent/issue-* branch. Use when the user explicitly invokes `$implement` in Codex or `/implement` in Claude Code. Never reviews and never merges.
+description: Implements a tracker ticket in an isolated git worktree and opens a review-ready PR in Korean, then stops so the human can fire verification and review separately. Handles a fresh start and rework on an existing agent/issue-* branch. Use when the user explicitly invokes `$implement` in Codex or `/implement` in Claude Code. Never verifies 완료 조건 (that is `verify`, fired by the human on the open PR), never reviews and never merges.
 ---
 
 # implement
 
 Implement one ticket in an isolated worktree, open a **review-ready PR**, and stop at
-`awaiting-review`. Review is fired separately by the human via `/review-round <N>` or another review process.
+`awaiting-review`. Verification (`verify <N>`) and review (`review-round <N>`) are fired separately by the
+human on that PR — this skill does neither.
 
 **Read `~/.agents/skills/agent-loop/CONTRACT.md` before starting** — states, the tracker adapter,
 worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
@@ -18,8 +19,8 @@ verification, PR evidence and land-only issue checkboxes.
 | | |
 |---|---|
 | State transition | `ready` → `in-progress` → `awaiting-review` |
-| Deliverable | one non-draft PR with current 완료 조건 verification in its body |
-| Never | review · merge · push to the base branch |
+| Deliverable | one non-draft PR whose `## 완료 조건 검증` section is the placeholder `verify` fills |
+| Never | verify 완료 조건 · review · merge · push to the base branch |
 
 ## Entry modes
 
@@ -33,15 +34,15 @@ Copy this into your response and check items off as you go.
 
 ```
 Implementation progress:
-- [ ] 1  Load ticket and 완료 조건, plan verification, detect fresh vs rework
+- [ ] 1  Load ticket and 완료 조건, confirm each is verifiable, detect fresh vs rework
 - [ ] 2  Blocker gate (fresh only)
 - [ ] 3  Claim the state
 - [ ] 4  Resolve the base
 - [ ] 5  Prepare the worktree
 - [ ] 6  Implement (fetch the Figma node first if the issue has a design)
-- [ ] 7  Typecheck, then verify 완료 조건 → 충족 / 미충족 / 미검증 with evidence
-- [ ] 8  comment-cleaner → commit → verify base both ways → push → PR with verification section
-- [ ] 9  Land the state and stop
+- [ ] 7  Typecheck; run the tests this change added or touched
+- [ ] 8  comment-cleaner → commit → check base both ways → push → PR with the verification placeholder
+- [ ] 9  Land the state, point at `verify <N>`, stop
 ```
 
 ## Discover & propose (no-argument mode)
@@ -75,7 +76,8 @@ git branch --list "agent/issue-<N>-*"
 ```
 
 No branch → **fresh start**. Branch exists → **rework** (continue on it, applying this turn's extra
-instructions). Select a verification route for each condition now. Missing or ambiguous conditions
+instructions). Read each condition once the way `verify` will: is there an observable result one of its
+routes (`~/.agents/skills/verify/references/routes.md`) can check? Missing or ambiguous conditions
 go through [When stuck] before coding or claiming `in-progress`; its `blocked` transition is the explicit
 exception to the normal claim sequence. Keep condition progress in the session, not in issue checkboxes.
 
@@ -155,18 +157,21 @@ routeTree copy.
   is connected or the node cannot be fetched, treat it as stuck ([When stuck]) rather than
   improvising the UI from the issue prose.
 - Follow the active project instructions (`AGENTS.md`, `CLAUDE.md`, or the host equivalent).
-- Writing new tests and verifying 완료 조건 are separate decisions. Use the shared reference
-  and project test runner; choose new tests when they provide necessary or repeatable verification.
+- Write tests where they are the natural proof of a condition (domain/server behaviour, pure functions);
+  `verify` reuses them as evidence. Do not stage screenshots or device runs here — that is `verify`'s
+  work, and it needs a context this session no longer has.
 
-## 7. Typecheck and 완료 조건 verification
+## 7. Typecheck and the tests this change owns
 
-Fix and repeat until `pnpm check-types:<app>` passes. Never call `tsc` directly.
-Then run the **`verify` skill** (`~/.agents/skills/verify/SKILL.md`) with `verify <N> --no-publish`: it
-classifies each condition, runs its route (tests, API, Playwright flow against base and head, argent flow),
-applies the quality gates and renders the marked `## 완료 조건 검증` block plus `results.json`. Record
-충족 / 미충족 / 미검증 with evidence or reason as defined in the shared reference. Fix clear implementation failures within scope. An environment gap
-may remain 미검증 in a review-ready PR; missing policy still uses [When stuck]. Do not claim verification
-merely because code compiles. Keep the results for the PR body; do not call `tracker check`.
+Fix and repeat until `pnpm check-types:<app>` passes. Never call `tsc` directly. Then run the tests the
+change added or touched through the project runner (`pnpm test <path>`) and fix what they show.
+
+**This step does not verify 완료 조건.** That is `verify`'s run, fired by the human on the open PR
+(`verify <N>`) in a fresh context — with the environment check, the simulator, the base worktree and the
+evidence gates it needs. It used to be called from here, and that is exactly where it got skipped: by this
+point the session has spent its budget on the ticket and the code, so the most expensive route sat at the
+point of least context and came back all 미검증 with a guessed reason (agent-loop `references/evidence.md`,
+PR #375). A green typecheck or test run is a gate, not evidence for any condition.
 
 ## 8. Commit and PR
 
@@ -192,7 +197,7 @@ git merge-base --is-ancestor origin/<base> HEAD || echo "base moved — needs ca
 ```
 
 If it moved, catch up with `git merge origin/<base>` **before pushing**, then **re-run the typecheck
-gate and reverify affected 완료 조건**.
+gate and the tests from [7]**.
 
 ```bash
 git push -u origin agent/issue-<N>-<slug>
@@ -200,17 +205,25 @@ LINK=$("$TRACKER" link-line <N>)   # the line that binds PR → ticket; never ha
 gh pr create --base <base> --title "<제목>" --body-file <scratchpad>/pr-<N>.md
 ```
 
-Create the body file before `gh pr create`: preserve the adapter-produced `LINK`, record the base,
-explain the implementation and include the `## 완료 조건 검증` block rendered by `verify` in [7] (markers
-included). After `gh pr create`, upload its media: `node ~/.agents/skills/verify/scripts/evidence-block.mjs
---results <results.json> --attach-list` → `gh pr edit <PR> --body-file <body> --attach <file>…` (gh ≥ 2.99;
-otherwise leave the text block and say the media stayed local). Identify
-the tested code and environment without claiming a later untested revision. Read the published body back.
-The PR still opens here, after implementation, always non-draft — never earlier for progress tracking.
+Create the body file before `gh pr create`: preserve the adapter-produced `LINK`, record the base, explain
+the implementation, and end with the verification placeholder — exactly one `## 완료 조건 검증` heading,
+which `verify` later takes over in place:
 
-**Rework**: push, re-read the existing PR body, update its implementation summary and verification
-section, and use `gh pr edit <PR> --body-file <file>`. Preserve its binding and human-authored content.
-Do not flip it back to draft — `in-progress` already says the code is moving.
+```markdown
+## 완료 조건 검증
+
+검증 미실행 — `verify <N>` 이 이 섹션을 채운다. 타입 체크·테스트 통과는 완료 조건의 근거가 아니다.
+```
+
+Write no per-condition lines under it, not even 미검증 ones: a section without a `검증 대상` sha is what
+`land` reads as "not verified", and that is the truth at this point. Read the published body back. The PR
+still opens here, after implementation, always non-draft — never earlier for progress tracking.
+
+**Rework**: push, re-read the existing PR body, update its implementation summary, and use
+`gh pr edit <PR> --body-file <file>`. Leave `## 완료 조건 검증` alone — the push moved the head, so the
+record's `검증 대상` no longer matches it and `land` will ask for a new `verify <N>` run; rewriting the
+section by hand would only hide that. Preserve its binding and human-authored content. Do not flip it
+back to draft — `in-progress` already says the code is moving.
 
 ## 9. Land the state and stop
 
@@ -218,13 +231,18 @@ Do not flip it back to draft — `in-progress` already says the code is moving.
 "$TRACKER" transition <N> awaiting-review
 ```
 
-Report the PR link and **stop**. Tell the user to run the configured review process; for more changes,
-re-run `implement <N>` with instructions.
+Report the PR link and **stop**, with the next moves one line each:
+
+- `verify <N>` — fills `## 완료 조건 검증` with evidence on this head; without it `land` asks whether to
+  merge unverified
+- `review-round <N>` — a review round; it does not need `verify` first, though UI-heavy tickets read
+  better with the screenshots already there
+- `implement <N>` with instructions — more changes
 
 ## When stuck
 
-A verification-only obstacle after implementation can be recorded as 미검증 in the PR under [7].
-This path is for work that cannot proceed, especially missing or ambiguous requirements.
+This path is for work that cannot proceed, especially missing or ambiguous requirements. A verification
+obstacle is not one — `verify` records those on its own run.
 
 If you cannot proceed on your own (ambiguous requirements, unresolved types, environment issues):
 
@@ -241,3 +259,5 @@ In addition to CONTRACT's [Never]:
 
 - This skill is the sanctioned exception for push + PR, but **only up to opening the PR**.
 - The base is dynamic — the user's current branch unless `--base` says otherwise. Never assume `main`.
+- **Never write a verification result** — no 충족/미충족/미검증 lines, no `검증 대상`. The placeholder in
+  [8] is the whole section; `verify` is its only writer (CONTRACT [Never]).

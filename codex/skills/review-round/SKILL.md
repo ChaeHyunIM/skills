@@ -20,7 +20,7 @@ verification, PR evidence and land-only issue checkboxes.
 | | |
 |---|---|
 | State transition | `awaiting-review` → `in-review` → `awaiting-review` or `blocked` |
-| Deliverable | one loop-authored PR summary comment + update of the PR body’s 완료 조건 검증 section; raw engine artifacts stay in the scratchpad |
+| Deliverable | one loop-authored PR summary comment; raw engine artifacts stay in the scratchpad. The PR body's `## 완료 조건 검증` is `verify`'s record and is not edited here |
 | Never | judge mergeability · run `ultra` · trigger either engine outside a human-fired round |
 
 ## Progress checklist
@@ -35,7 +35,7 @@ Round progress:
 - [ ] 4  Extract, sanity-check and deduplicate both finding lists
 - [ ] 4a Compare every 완료 조건 with implementation and evidence, including omissions
 - [ ] 5  Disposition findings → comment-cleaner → typecheck → commit → push
-- [ ] 6  Sync base, typecheck, reverify affected 완료 조건 and update the PR body
+- [ ] 6  Sync base, typecheck; record whether the verification record still describes the head
 - [ ] 7  Compute the round range → write the PR comment
 - [ ] 8  Land the label and stop
 ```
@@ -192,8 +192,9 @@ Structured shape:
 
 The outer loop compares every original condition with implementation and PR evidence using the shared
 reference. Check omissions even if both engines report zero findings. Add concrete missing behaviour to
-the combined working list as source `완료 조건`; do not invent a file/line for absent code. Record a
-verification-only gap in the PR body as 미검증 with its reason, not as an invented engine finding.
+the combined working list as source `완료 조건`; do not invent a file/line for absent code. A
+verification-only gap goes on the round comment's 검증 line — never into the PR body, whose record is
+`verify`'s, and never as an invented engine finding.
 Unresolved policy uses the existing 보류 path. Never change issue checkboxes here.
 
 ## 5. Disposition the findings
@@ -242,10 +243,10 @@ pnpm check-types:<app>
 - **Migrations on both sides** → the numbers never conflict as text, but the apply order does. Name the
   colliding **files**, not the commits that introduced them.
 
-Before [7], reverify conditions affected by fixes or the base sync. Re-read the PR body, update only
-its current `## 완료 조건 검증` section through `gh pr edit <PR> --body-file <file>`, preserve the
-binding and other content, and read back the result. Add the section to legacy PRs if absent. Unperformed
-checks remain 미검증; preserve the actual tested version for results carried forward.
+Before [7], run `bash ~/.agents/skills/verify/scripts/verified-head.sh <PR> <worktree>` and keep its line
+for the comment. Do not edit `## 완료 조건 검증`: a round that pushed commits has made the record `stale`
+by definition, and `land` will ask about it before merging — say so in [7] and [8] instead of rewriting
+results by hand. Reverifying here, per round, is how verification used to be skipped.
 
 ## 7. The round comment — the round's only new PR comment
 
@@ -315,6 +316,8 @@ as a blocking dialog.
 Say this, then stop:
 
 - 라운드 결과 → `<PR 코멘트 URL>` (지적 n · 반영 a · 기각 b · 보류 c)
+- 검증 기록 → `verified-head.sh` 의 한 줄 그대로 (`current` / `stale` / `missing`) — `current` 가 아니면
+  `$land` 가 병합 전에 한 번 묻는다. 증거를 새로 만들려면 `$verify <N>`
 - 보류 <c>건 (있을 때만) → 위 awk 로 뽑은 보류 섹션 그대로
 - 더 리뷰 → `$review-round <N>`
 - 더 수정 → `$implement <N>` with instructions

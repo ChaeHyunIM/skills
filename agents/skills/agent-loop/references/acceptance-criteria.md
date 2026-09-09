@@ -50,8 +50,9 @@ requires a human-applied migration, record that dependency; the agent must not a
 ## Verify and keep one current PR record
 
 Read conditions via `"$TRACKER" criteria <N>`. Do not duplicate the Markdown parser in skills.
-At implementation start, select a verification method for each condition. Missing or ambiguous conditions
-go through `implement`'s existing When stuck path before coding; do not synthesize pass criteria on the fly.
+At implementation start, read each condition the way `verify` will — is there an observable result one of
+its routes can check? Missing or ambiguous conditions go through `implement`'s existing When stuck path
+before coding; do not synthesize pass criteria on the fly.
 
 | Status | Meaning | Checkbox |
 |---|---|---|
@@ -73,10 +74,18 @@ covers the condition; do not require another tool run just to follow a table. Th
 Do not use typecheck as proof of runtime behaviour. Try the applicable verification route before declaring
 미검증 unless a known missing environment, permission or human action prevents it. State that reason.
 
-The **current verification record lives only in the PR body**, in `## 완료 조건 검증`. Open the PR at
-the existing end-of-implementation step, non-draft; do not open an early PR for progress reporting.
-Before that, keep working results in the session. Rework and review update the same PR section.
-Preserve the PR binding line and other human-authored content when editing; re-read first and read back.
+The **current verification record lives only in the PR body**, in `## 완료 조건 검증`, and **only `verify`
+writes it**. `implement` opens the PR at its end-of-implementation step (non-draft, never earlier for
+progress reporting) with a placeholder under that heading and no results; rework and review rounds move
+the head and leave the section alone. Preserve the PR binding line and other human-authored content when
+editing; re-read first and read back.
+
+A record is **current** when its `검증 대상` sha is the PR head, or differs from it only by merge commits —
+a base sync changes no PR-side line. Anything else — no record, no sha, non-merge commits after the sha —
+is **stale**: the evidence describes code that is no longer what would merge.
+`~/.agents/skills/verify/scripts/verified-head.sh <PR> [<worktree>]` prints `current <sha>`,
+`stale <sha> <n>` or `missing` (exit 0 / 1 / 2). Every reader uses it; nobody re-derives currency from
+dates, comments or a look at the diff.
 
 ```markdown
 ## 완료 조건 검증
@@ -98,23 +107,31 @@ evidence. Neither is a clean review. Confirm that the goal and agreed constraint
 all boxes pass. Do not weaken or remove a condition to fit the implementation; changes in meaning need
 the human's decision recorded on the issue and affected results reverified.
 
-`implement` and `review-round` reverify conditions affected by their fixes or base sync. Unrelated edits
-do not invalidate every result. A round records only its checks and changes in its comment; the comment
-is a historical result, not another table to keep current. The outer round owns this work without starting
-an additional paid review engine. Missing implementation is a fix; unresolved policy remains 보류.
+Neither `implement` nor `review-round` reverifies. A push that changes code makes the record stale by the
+sha rule above, and the next `verify` run re-establishes it — once, on the final head, instead of once per
+round at the point of least context. A round records only its checks and changes in its comment; the
+comment is a historical result, not another table to keep current. Missing implementation is a fix;
+unresolved policy remains 보류.
 
 ## Land: approval is not satisfaction
 
-Only `land` updates existing issue checkboxes. New tickets are created unchecked. At land's plan step,
-read the current PR record and fresh issue conditions; a round comment is optional. Missing evidence or
-a changed condition is 미검증. Show remaining conditions and their reasons across the whole queue in
-the existing single confirmation. Naming the PR authorizes normal landing, but remaining conditions
-require the informed confirmation here unless that exact exception was already explicitly approved.
+Only `land` updates existing issue checkboxes. New tickets are created unchecked. At land's queue step,
+`verified-head.sh` reads every ticket's record. Anything but `current` goes into land's existing single
+confirmation as one more thing the signer could not have known, with `verify <N>` named as the fix — it is
+a question, not a refusal. At land's plan step, read the record and fresh issue conditions; a round comment
+is optional. A changed condition, or an item the record lacks, is 미검증. Show remaining conditions and
+their reasons across the whole queue in that same confirmation. Naming the PR authorizes normal landing,
+but remaining conditions and a non-`current` record require the informed confirmation here unless that
+exact exception was already explicitly approved.
 
-Do not rerun the full feature verification in `land`. Compare the evidence's code version with the PR
-head and inspect anticipated sync/conflict changes. Overlapping files are a signal to assess affected
-conditions, not proof of failure. Expose anticipated uncertainty in the plan before approval. Keep the
-existing typecheck and intent-collision rules. A newly discovered remaining condition outside the approved
+Approving a merge over a `stale` record accepts the merge, never the evidence: its 충족 items describe
+earlier code, so they are written to the issue as unchecked, like an accepted 미검증.
+
+`land` does not verify and does not judge staleness by hand. Its own base sync adds merge commits, which
+keep the record current; a conflict *resolution* that changes code is assessed through `land`'s conflict
+discipline and typecheck, and overlapping files are a signal to name affected conditions, not proof of
+failure. Expose anticipated uncertainty in the plan before approval. Keep the existing typecheck and
+intent-collision rules. A newly discovered remaining condition outside the approved
 exception scope must not be silently included: leave that item unmerged, report it, and continue independent
 items without opening a second confirmation. Missing verification alone is not an intent-collision valve.
 

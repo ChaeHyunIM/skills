@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Verifies that a change compiles, passes tests and behaves as intended, and produces evidence a reviewer can check — test output, API request/response, before/after screenshots for state claims, and assertion-backed interaction videos for behaviour claims (Playwright for web, argent for the Expo app). Replays the same flow against the base branch so "before" is real, then writes the `## 완료 조건 검증` record into the PR. Use when the user invokes `$verify` (Codex) or `/verify` (Claude Code), asks "검증해줘", "동작 확인해줘", "제대로 되는지 확인해줘", "before/after 찍어줘", "테스트 돌려서 증명해줘", or when `implement` / `review-round` reach their verification step. Never merges, never applies migrations, never writes to production.
+description: Verifies that a change compiles, passes tests and behaves as intended, and produces evidence a reviewer can check — test output, API request/response, before/after screenshots for state claims, and assertion-backed interaction videos for behaviour claims (Playwright for web, argent for the Expo app). Replays the same flow against the base branch so "before" is real, then writes the `## 완료 조건 검증` record into the PR. Use when the user invokes `$verify` (Codex) or `/verify` (Claude Code), asks "검증해줘", "동작 확인해줘", "제대로 되는지 확인해줘", "before/after 찍어줘", "테스트 돌려서 증명해줘", or after `implement` opened a PR and before `land` merges it. It is the loop's only writer of that record — `implement` leaves a placeholder, `review-round` leaves the record alone, and `land` asks before merging a PR whose record no longer describes its head. Never merges, never pushes, never applies migrations, never writes to production.
 ---
 
 # verify
@@ -27,8 +27,11 @@ execution engine and does not restate it.
   Never `git stash`, `git checkout` or `git switch` in the main checkout.
 - Use a model-driven recording (Chrome MCP GIF, hand-clicked screenshots) as evidence. Model-driven
   browsing is for **exploring** a flow; evidence comes from replaying the authored flow.
-- Weaken, drop or reinterpret a claim so the code passes. Ambiguity goes back to the user (or, inside
-  `implement`, to its When stuck path).
+- Weaken, drop or reinterpret a claim so the code passes. Ambiguity goes back to the user; a wrong
+  condition is fixed on the ticket, then through `implement`.
+- Write 미검증 with a guessed reason. An environment reason quotes the `MISS`/`INFO` line from
+  `scripts/check-env.sh` or the failed run's error verbatim; «설치 여부 미확정» is a reason to run the check,
+  not a verdict (PR #375: every condition 미검증 for a simulator that was booted).
 - Run `db:push` / `db:migrate`, write to a production database, or call production endpoints. A claim that
   needs a human-applied migration is 미검증 with that dependency named.
 - Upload media anywhere but the PR through `gh --attach`. No third-party image hosts.
@@ -47,7 +50,7 @@ execution engine and does not restate it.
 
 | Invocation | Where the claims come from |
 |---|---|
-| `verify <N>` | `"$TRACKER" criteria <N>` — resolve `$TRACKER` per agent-loop `CONTRACT.md` [Tracker adapter] |
+| `verify <N>` | `"$TRACKER" criteria <N>` — resolve `$TRACKER` per agent-loop `CONTRACT.md` [Tracker adapter]. The PR is `"$TRACKER" pr-for <N>`, the code is its worktree (`.claude/worktrees/issue-<N>-<slug>`, CONTRACT [Worktree convention]): `git -C <worktree> pull` first and run everything there. No open PR → session report only, and say so |
 | `verify --pr <PR>` | the ticket bound to the PR (`gh pr view <PR> --json body` → binding line → `criteria`), else the PR body's own `## 완료 조건 검증` items |
 | `verify` (no argument) | derived from `git diff <base>...HEAD` plus what the user said. **Present the derived list and get confirmation before running anything.** |
 
@@ -55,13 +58,27 @@ Options: `--base <branch>` (default: the PR's `baseRefName`, else ask — never 
 `--no-before` (skip the base comparison; record why), `--app <doko|admin|doko-app|api>` (restrict surfaces),
 `--no-publish` (session report only, no PR edit).
 
+## Where this run sits in the loop
+
+`verify` is a human-fired step on an open PR, on the same axis as `review-round` and `land` — not a
+sub-step of `implement`. It runs in a fresh context on purpose: the routes below want a simulator, a base
+worktree and the quality gates, and an implementation session that has just finished coding has none of
+that budget left (agent-loop `references/evidence.md`, «Verification»).
+
+The record it writes is **a property of a commit, not a loop state**: its `검증 대상` sha is what `land`
+compares with the PR head before merging and what `review-round` reports against after pushing fixes.
+`scripts/verified-head.sh <PR> [<worktree>]` is that comparison — `current <sha>` / `stale <sha> <n>` /
+`missing`. Run it first: a `current` record is replaced only for the items you re-check this run; a
+`stale` or `missing` one is replaced whole. `results.target.commit` is the worktree HEAD you ran against,
+and it must be the PR's `headRefOid` — pull before running, and never push from here.
+
 ## Progress checklist
 
 Copy this into your response and check items off as you go.
 
 ```
 Verification progress:
-- [ ] 1  Collect claims and confirm the list
+- [ ] 1  Resolve PR and worktree, run verified-head.sh, collect claims and confirm the list
 - [ ] 2  Classify each claim → evidence type, route, written pass criterion
 - [ ] 3  Gates: pnpm check-types:<app> (and lint when the diff touches lint-relevant code)
 - [ ] 4  Environment: scripts/check-env.sh, base worktree, dev servers for the changed surfaces
@@ -175,7 +192,7 @@ results, videos and traces live under `.e2e/` (gitignored) and never enter a com
 This skill owns claim classification, the base/head comparison, the verdict and the PR record. It delegates:
 browser exploration to the Playwright MCP (Chrome MCP in Claude Code only as a fallback for looking),
 replay and assertions to `@playwright/test`, device flows and recording to `argent`, uploads to `gh`.
-It never opens a PR, never transitions ticket state, never edits issue checkboxes (`land` does), and never
-launches a paid review engine.
+It never opens a PR, never pushes, never transitions ticket state, never edits issue checkboxes (`land`
+does), and never launches a paid review engine.
 
 Errors and their fixes: `references/errors.md`.

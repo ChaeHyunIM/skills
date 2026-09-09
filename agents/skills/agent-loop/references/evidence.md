@@ -11,6 +11,7 @@ Everything here is measured. Do not re-investigate these conclusions.
 - [Ticket slicing](#ticket-slicing)
 - [Labels and blocking edges](#labels-and-blocking-edges)
 - [Worktrees and environment](#worktrees-and-environment)
+- [Verification](#verification)
 
 ## Review rounds
 
@@ -79,3 +80,23 @@ The signal is a `git status` path starting with `../../../`.
 **turbo excludes only gitignored files from its hash**
 A generated file like routeTree that affects types while being gitignored produces false cache hits.
 Currently resolved by folding route generation into the turbo task.
+
+## Verification
+
+**Verifying inside `implement` produced no evidence**
+`implement`'s step 7 used to call `verify` at the end of the implementation session. PR #375 (2026-09-09)
+came back with every condition 미검증 and the reason «이전 iOS 시뮬레이터 앱 실행 시도가 실패했으며, 미설치
+여부는 확정하지 못함» — while `verify/scripts/check-env.sh` on the same machine reported argent 0.24.0
+installed and one simulator booted. The check was never run: by step 7 the session had spent its budget on
+the ticket, the worktree and the code, and the most expensive route (device flow, base worktree, quality
+gates) sat at the point of least context. Hence `verify` is a human-fired step on the open PR, in a fresh
+context, and the record is gated by sha rather than by a promise inside `implement`.
+
+**A record nobody compared with the head went stale silently**
+The record header already carried `검증 대상: <sha>`; nothing read it back. Rework and review rounds
+pushed commits on top and the block stayed, so a reader saw 충족 lines about code that no longer existed.
+`land` now reads `verified-head.sh` instead of assessing staleness by hand and puts anything but `current`
+into its existing single confirmation, and merge commits alone (a base sync) do not count as drift — the
+same rule `land` already used for `REVIEWED_HEAD`. It asks rather than refuses: a hard gate would have made
+`verify` a fifth mandatory command, and a mandatory step with a cost is the shape that produced the
+skipping above.

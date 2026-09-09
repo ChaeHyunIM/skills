@@ -33,7 +33,7 @@ Copy this into your response and check items off as you go.
 
 ```
 Drain progress:
-- [ ] 1  Collect queue, PR/worktree, fresh 완료 조건 and current PR verification
+- [ ] 1  Collect queue, PR/worktree, fresh 완료 조건 and the verification record's state
 - [ ] 2  Order the queue
 - [ ] 3  Present plan + remaining conditions; confirm exceptions once for the whole queue
 - [ ] 4  Drain: align → sync → resolve → typecheck → write issue checks → merge → record accepted gaps
@@ -52,10 +52,19 @@ Drain progress:
   name there.
 - Resolve each ticket's PR with `"$TRACKER" pr-for <N>`.
 - Read `"$TRACKER" criteria <N>` and the PR body's `## 완료 조건 검증`. Read round comments when
-  present; a review round is not a prerequisite. Missing/changed conditions or missing/stale evidence
-  become 미검증, not an inferred pass. Prepare the per-item results for [3] using the shared reference.
+  present; a review round is not a prerequisite. A changed condition, or an item the record lacks, is
+  미검증, not an inferred pass. Prepare the per-item results for [3] using the shared reference.
+- Pin `REVIEWED_HEAD` from the newest round comment — the sha after `..` in its 반영 compare link
+  (`.../compare/<ROUND_BASE>..<ROUND_HEAD>`). `### 반영 — 커밋 없음` means the round applied nothing, so
+  its `ROUND_BASE` — the sha on the 검증 줄 (`리뷰 기준: Claude <ROUND_BASE>`) — is the reviewed head. No
+  round comment, or a sha that does not resolve in the worktree, leaves `REVIEWED_HEAD` unset.
 - Pin `REPO` and each ticket's worktree. A missing worktree (e.g. eaten by a nested `claude -p`)
   is recreated with `prepare-worktree.sh <N> <slug>` (no base argument — rework mode).
+- **Verification record.** `bash ~/.agents/skills/verify/scripts/verified-head.sh <PR> <worktree>` —
+  `current <sha>` (exit 0), `stale <sha> <n>` (1) or `missing` (2). Keep the line for [3]; anything but
+  `current` is a surprise there, not a refusal — the human reads «3 커밋 전 증거» and decides, the same
+  judgment they already make about a remaining 미검증 condition. Merge commits alone (a base sync) keep a
+  record current; the script counts them that way.
 - Empty queue → report that and **stop**.
 
 ## 2. Order the queue
@@ -66,15 +75,36 @@ of the order, it is why [4] re-syncs per item.
 ## 3. Present the plan — ask only on surprise
 
 Show a Korean table: 순서 · PR · 이슈 · base · `mergeStateStatus` · 예상 충돌 여부 · 리뷰 후
-head 변동 · 완료 조건(충족/미충족/미검증 counts), plus any refused items with their reasons.
+head 변동 · 검증 기록(`검증 대상` sha) · 완료 조건(충족/미충족/미검증 counts), plus any refused items with
+their reasons.
 List each remaining condition with its actual result or verification obstacle. Include anticipated
 uncertainty from base sync/conflict resolution so it is visible before the one confirmation.
 
 The arguments are already the signature for normal landing. A **surprise** is any of: an argument
-ticket refused in [1] · a predicted conflict · a PR head that moved after its newest round comment
-(compare commit/comment dates through `gh pr view <PR> --json commits,comments`) · remaining
-미충족/미검증 conditions not already explicitly accepted. Without a round, use the PR verification
-record as the baseline; do not manufacture a missing-review blocker.
+ticket refused in [1] · a predicted conflict · **unreviewed** work on the PR head · a verification record
+that is not `current` · remaining 미충족/미검증 conditions not already explicitly accepted. Without a round,
+use the PR verification record as the baseline; do not manufacture a missing-review blocker.
+
+**A `stale` or `missing` record joins [3]'s single question, with `verify <N>` named as the fix.** Say
+what it means in one line — a `stale` record's 충족 items describe code from `<n>` commits ago, a `missing`
+one means nothing was verified — and let the answer decide. It is not a separate question and never a
+second one.
+
+**A review round's own commits are reviewed work, never a surprise.** The round applied the findings,
+ran `comment-cleaner`, typechecked, committed and pushed them itself, and its comment reports every one
+of them — asking the human to review them again asks for a signature they already gave by reading that
+comment. They land with the rest of the queue, silently. The same holds for the base-sync merge the
+round makes before posting. So measure the head against `REVIEWED_HEAD`, not against comment dates:
+
+```bash
+git -C <worktree> fetch -p origin
+git -C <worktree> log --oneline --no-merges $REVIEWED_HEAD..origin/<branch>
+```
+
+Empty → the head carries nothing beyond the round; 리뷰 후 head 변동 is 없음. Non-empty → those commits
+are the surprise, and the table names them. A merge commit alone (a base sync someone ran by hand) is
+not a surprise. `REVIEWED_HEAD` unset → fall back to comparing commit and comment dates through
+`gh pr view <PR> --json commits,comments`.
 
 - **Argument mode, no surprises**: print the table and proceed without asking.
 - **Argument mode, surprises**: name only the surprising items and ask once whether to include
@@ -113,11 +143,16 @@ new behaviour to fix is an intent collision — pull the valve.
 
 **e. Synchronize issue checkboxes, then merge.**
 
-Use the shared reference to reconcile the final tree with the PR verification record; do not rerun the
-full feature checks or declare every overlapping file a failure. Update any stale PR result honestly.
-Re-read conditions via `criteria` and build a complete checks file: true only for evidenced 충족, false
-for 미충족 and 미검증, even when their merge was approved. A changed issue must be reassessed, not
-blindly mapped by old indices. Immediately before merging:
+Do not rerun the feature checks and do not edit the record. [4b]'s sync adds merge commits only, so a
+record that was `current` in [1] still is; one the human accepted as `stale` stays exactly as stale as it
+was when they accepted it. A conflict resolution from [Resolve] is the one thing that changes code here —
+name the conditions its files touch in the resolution comment, and declare no overlapping file a failure
+by itself.
+
+Re-read conditions via `criteria` and build a complete checks file: `checked` is true only for an evidenced
+충족 **on a `current` record**, false for 미충족, 미검증, and every item on a record the human accepted as
+`stale` — that 충족 describes earlier code, and approving the merge never turned it into a pass. A changed
+issue must be reassessed, not blindly mapped by old indices. Immediately before merging:
 
 ```bash
 "$TRACKER" criteria <N> > <scratchpad>/criteria-<N>.json
@@ -208,7 +243,10 @@ In addition to CONTRACT's [Never]:
 - **Never merge a ticket the human did not name or confirm in this run** — and never carry a
   signature over from a previous run: each run collects its own.
 - **Never resolve an intent collision.** The valve is not optional.
+- **Never merge past a non-`current` verification record without [3]'s question**, and never rewrite a
+  record to make it look current — `verify <N>` is its only writer.
 - **Never reorder the queue after presenting the plan** without re-presenting it.
-- **Never silently merge a surprise** — a refused ticket, a predicted conflict, or a head that
-  moved after review always passes through [3]'s question first.
+- **Never silently merge a surprise** — a refused ticket, a predicted conflict, or an unreviewed
+  commit on the head always passes through [3]'s question first. A review round's own commits are
+  reviewed, so they are not that: never hold the queue for them.
 - The only push is [4b]'s sync push, on this item's own branch.

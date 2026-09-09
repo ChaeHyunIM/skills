@@ -1,7 +1,7 @@
 # agent-loop shared contract
 
-The contract shared by `to-tickets`, `implement`, `review-round` and `land`. All four read this file
-at the start of a run. The **evidence** behind these rules — measurements, incidents — is not here; it lives in
+The contract shared by `to-tickets`, `implement`, `verify`, `review-round` and `land`. All five read this
+file at the start of a run. The **evidence** behind these rules — measurements, incidents — is not here; it lives in
 `references/evidence.md` and is read only when a rule is in doubt.
 
 ## Contents
@@ -28,7 +28,10 @@ One name per thing. The four skills use only this vocabulary.
 | **round** | One run of the configured review-round skill |
 | **완료 조건** | Observable outcomes promised by the issue; `Acceptance criteria` and `검수 기준` are legacy headings only |
 
-The issue owns the conditions; the PR body owns current verification evidence.
+The issue owns the conditions; the PR body owns current verification evidence, and **`verify` is its only
+writer**. That evidence is a property of a commit, not a loop state: its `검증 대상` sha names the code it
+describes, and the record is current only while the PR head is that sha or differs from it by merge commits
+alone (`references/acceptance-criteria.md`; `verify/scripts/verified-head.sh` is the check).
 Only `land` updates existing issue checkboxes, immediately before merge.
 A check means verified satisfaction; human merge approval does not turn remaining conditions into passes.
 Read `references/acceptance-criteria.md` at the relevant skill checkpoint for the shared rules.
@@ -36,18 +39,23 @@ Read `references/acceptance-criteria.md` at the relevant skill checkpoint for th
 ## Loop map
 
 ```
-    to-tickets             implement <N>             review-round <N>         human
-──────────────▶ tickets ─────────────▶ PR opened ──────────────▶ round comment ──────▶ land <N...> ──▶ merged
-       ready            in-progress            in-review           awaiting-review      (args = signature)
-                        → awaiting-review      → awaiting-review
-                                                or blocked
+    to-tickets             implement <N>              verify <N>  ·  review-round <N>                 human
+──────────────▶ tickets ─────────────▶ PR opened ──────────────────────────────────────────▶ land <N...> ──▶ merged
+       ready            in-progress          record (no state)   in-review → awaiting-review      (args = signature)
+                        → awaiting-review                                    or blocked           asks about a stale record
 ```
+
+`verify` and `review-round` are both human-fired on the open PR, in either order and as often as needed;
+neither is a prerequisite of the other, and neither is mandatory. `land` reads the verification record's
+state and asks about it once — a merge over evidence that does not describe the head is the human's call,
+made knowing that.
 
 The merge judgment always terminates at the human — and the human expresses it by **invoking `land`
 and naming (or picking) the tickets to merge**. `land` is human-fired only, so its arguments — or
 its queue pick — *are* the merge signature; it asks one further question only when a PR diverged
 from what the signer could have known (a refused ticket, a predicted conflict, a head that moved
-after review, or remaining 미충족/미검증 conditions). There is no signature state to attach beforehand — recording the same judgment twice
+after review, a verification record that no longer describes the head, or remaining 미충족/미검증
+conditions). There is no signature state to attach beforehand — recording the same judgment twice
 (a marker, then the command) was duplication, and the marker was the copy that went stale.
 
 ## Tracker adapter
@@ -126,7 +134,7 @@ opened non-draft.**
 |---|---|---|
 | `ready` | A complete spec an agent may pick up — **blocked tickets carry it too** | `to-tickets` |
 | `in-progress` | Being implemented | `implement` |
-| `awaiting-review` | Human can read it, or a round can be fired | `implement` · `review-round` |
+| `awaiting-review` | Human can read it; `verify` and a round can be fired. Says nothing about verification — that is the record's sha ([Vocabulary]) | `implement` · `review-round` |
 | `in-review` | A round is running = the branch already has a writer | `review-round` |
 | `blocked` | Cannot proceed without a human decision | `implement` · `review-round` · `land` |
 
@@ -219,3 +227,7 @@ comment-cleaner (no argument)  →  pnpm check-types:<app>  →  commit skill  �
   exactly one pass from each engine configured by that skill, all against its pinned head. `implement`,
   `land`, background jobs and every other skill must never start a review. A retry is another explicit
   `review-round` invocation — never an automatic loop.
+- **Only `verify` writes `## 완료 조건 검증`.** `implement` leaves the placeholder; rounds and `land` read
+  the record and never rewrite it. A result written anywhere else is a second writer of the evidence — and
+  the one that came back all 미검증 with a guessed reason when it lived inside `implement`
+  (`references/evidence.md`, «Verification»).
