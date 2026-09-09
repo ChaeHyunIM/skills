@@ -23,25 +23,33 @@ codex/skills/         Codex 전용
 
 ## 설치
 
+설치 스크립트를 두지 않는다. 어느 경로에 어떤 이름으로 얹어야 그 런타임이 스킬을
+인식하는지는 런타임마다 다르고, 버전이 오르면 또 바뀐다. 그 규칙을 스크립트에 박아 두면
+저장소가 런타임 변경을 계속 쫓아다녀야 한다.
+
+클론하고, 정본의 홈 자리만 링크한다.
+
 ```bash
 git clone https://github.com/ChaeHyunIM/skills.git ~/skills
-~/skills/install.sh
+ln -sfn ~/skills/agents/skills ~/.agents/skills
+ln -sfn ~/skills/agents/.skill-lock.json ~/.agents/.skill-lock.json
 ```
 
-`install.sh` 가 하는 건 `~/.agents/skills` 와 `~/.agents/.skill-lock.json` 심링크 두 개가
-전부다. 몇 번을 돌려도 결과가 같고, 목적지에 실파일이 있으면 지우지 않고
-`~/.skills-backup/<타임스탬프>/` 로 옮긴다.
+`~/.agents` 는 런타임 중립 홈이라 경로가 고정이다. 여기까지가 손으로 할 몫이다.
 
-**런타임별 설치는 스크립트가 하지 않는다.** 어느 경로에 어떤 이름으로 얹어야 그 런타임이
-스킬을 인식하는지는 런타임마다 다르고, 버전이 오르면 또 바뀐다. 그 규칙을 스크립트에
-박아 두면 저장소가 런타임 변경을 계속 쫓아다녀야 한다. 그래서 그 런타임의 에이전트에게
-시킨다. Claude Code 든 Codex 든 켜고 이렇게 말하면 된다.
+`-f` 는 목적지를 말없이 지운다. 새 머신이면 비어 있으니 그냥 치면 되고, 이미 뭔가 있는
+머신이라면 `ls -la ~/.agents` 로 먼저 본다. 심링크면 덮어써도 되고, 실파일·실디렉터리면
+옮겨 두고 건다.
+
+**나머지는 그 런타임의 에이전트가 얹는다.** Claude Code 든 Codex 든 켜고 이렇게 말하면 된다.
 
 ```
 ~/skills/agents/skills 가 런타임 중립 스킬 정본이고,
 ~/skills/claude/skills 와 ~/skills/codex/skills 는 각 런타임 전용이다.
 지금 런타임이 스킬을 읽는 방식대로 이것들을 설치해줘.
 ```
+
+에이전트가 자기 규칙을 알고 있으니 심링크를 걸든 복사하든 알아서 맞춘다.
 
 참고로 Claude Code 는 `~/.claude/skills/<이름>` 을 `../../.agents/skills/<이름>` 상대
 심링크로 걸어 왔다. 정본은 그 링크가 `~/.agents/skills` 를 거쳐 자동으로 따라오고,
@@ -56,4 +64,5 @@ Claude 전용 3개만 이 저장소의 `claude/skills/` 를 직접 가리킨다.
 ## dotfiles 와의 관계
 
 dotfiles 는 이제 스킬을 갖지 않는다. 두 저장소는 서로를 참조만 하고 서브모듈로 묶지 않는다 —
-새 머신에서는 둘 다 클론하고 각자의 `install.sh` 를 돌린다.
+새 머신에서는 둘 다 클론하고, `install.sh` 는 dotfiles 만 돌린다.
+스킬은 「설치」 절의 링크 두 줄과 에이전트가 맡는다.
