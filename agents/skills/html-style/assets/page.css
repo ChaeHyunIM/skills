@@ -1,0 +1,50 @@
+
+/* Artifact 호스트는 루트 요소에 data-theme 를 찍는다. 원본 CSS 는 .vbg-report 자신의 속성만 보므로 이어 준다. */
+:root[data-theme="dark"] .vbg-report { color-scheme: dark; }
+:root[data-theme="light"] .vbg-report { color-scheme: light; }
+
+/* 페이지 소유 구성: 진출 3단계 시퀀스. 공개 토큰만 읽는다. */
+.vbg-custom-process { display: grid; }
+.vbg-custom-step {
+  display: grid;
+  grid-template-columns: minmax(48px, auto) minmax(0, 1fr);
+  column-gap: var(--vbg-space-4);
+  row-gap: var(--vbg-space-1);
+  padding-block: var(--vbg-space-4);
+  border-top: 1px solid var(--vbg-border-default);
+}
+.vbg-custom-step:last-child { border-bottom: 1px solid var(--vbg-border-default); }
+.vbg-custom-step > * { margin: 0; }
+.vbg-custom-step-label {
+  grid-row: 1 / span 2;
+  font-size: var(--vbg-type-label);
+  font-weight: var(--vbg-weight-medium);
+  line-height: var(--vbg-leading-compact);
+  color: var(--vbg-text-secondary);
+  padding-top: 0.15em;
+}
+.vbg-custom-step-title {
+  font-size: var(--vbg-type-body);
+  font-weight: var(--vbg-weight-medium);
+  line-height: var(--vbg-leading-compact);
+  color: var(--vbg-text-primary);
+}
+.vbg-custom-step-gate {
+  grid-column: 2;
+  font-size: var(--vbg-type-compact);
+  line-height: var(--vbg-leading-compact);
+  color: var(--vbg-text-secondary);
+}
+
+/* 한국어 페이지: 헤딩·리드가 어절 중간에서 끊기지 않게 한다. */
+.vbg-report :is(h1, h2, h3, h4, .vbg-title, .vbg-lede, .vbg-custom-step-title, th) { word-break: keep-all; }
+.vbg-report .vbg-opening-claim > .vbg-context { margin-top: var(--vbg-space-6); }
+
+/* 두 플랫폼을 같은 폭으로 놓아 비교 기준을 맞춘다. 자동 열 폭은 긴 셀에 폭을 몰아준다. */
+@media (min-width: 801px) {
+  .vbg-report .vbg-custom-peer-cols { table-layout: fixed; }
+  .vbg-report .vbg-custom-peer-cols th:first-child { width: 20%; }
+}
+
+/* 원본 페이지와 같은 112px 폭. 원본 PNG 를 그대로 쓴다. */
+.vbg-report .vbg-custom-logo { display: block; width: 112px; height: auto; }
