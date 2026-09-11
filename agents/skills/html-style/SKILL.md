@@ -1,7 +1,8 @@
 ---
 name: html-style
-description: 사람이 보게 될 단독 HTML 페이지(Claude Code 의 Artifact, Codex 의 site)를 새로 만들거나 고칠 때 코드를 쓰기 전에 먼저 부른다. 독자의 결정을 먼저 잡는 판단 규칙, 첫 뷰포트 구성, 표·차트·색 규칙, 이름 붙인 금지 패턴, 게시 전 검사 순서, 그리고 CSS 와 폰트를 읽지 않고 이어 붙이는 조립 스크립트를 담는다. Vercel design.md 와 공개 CSS 를 프리텐다드 단일 폰트로 가져온 것이다. 트리거는 Artifact, site, 아티팩트, 사이트, 리포트 페이지, 제안서, 랜딩, 대시보드, 목업, 문서 페이지, "HTML 로 만들어줘", "페이지로 정리해줘", "화면으로 보여줘".
+description: 사람이 보게 될 단독 HTML 페이지(Claude Code 의 Artifact, Codex 의 site)의 판단 규칙과 시각 시스템. 독자의 결정을 먼저 잡는 판단 규칙, 첫 뷰포트 구성, 표·차트·색 규칙, 이름 붙인 금지 패턴, 게시 전 검사 순서, 그리고 CSS 와 폰트를 읽지 않고 이어 붙이는 조립 스크립트를 담는다. Vercel design.md 와 공개 CSS 를 프리텐다드 단일 폰트로 가져온 것이다. 사용자가 `/html-style`(Claude Code) 또는 `$html-style`(Codex) 로 직접 부를 때만 적용한다. Artifact·site 를 만든다는 이유만으로 에이전트가 알아서 불러오지 않는다.
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/*)
+disable-model-invocation: true
 ---
 
 # html-style
@@ -224,10 +225,8 @@ curl -s https://unpkg.com/@phosphor-icons/core/assets/regular/<name>.svg
 
 ## 글
 
-페이지 안 한국어 산문에는 `korean-output` 스킬(`~/.agents/skills/korean-output/SKILL.md`)을 적용한다. 독자는 대개 비개발자다.
+독자는 대개 비개발자다.
 
-- 개발 번역체·압축 명사 연쇄 금지. 기술 용어는 첫 등장에서 한 문장으로 푼다.
-- 한 문장에 생각 하나, 결론은 문단 첫 줄.
 - 헤딩은 문장형 주장. 장르명("개요", "일정") 이 아니다.
 - 코드·식별자·수치는 원문 유지. 버튼·축 라벨은 짧아도 되지만 본문은 완전한 문장.
 

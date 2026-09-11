@@ -6,7 +6,7 @@ Before writing or editing a Workflow script, and before spawning multiple subage
 
 ## Visual style for published pages
 
-Before writing or editing an Artifact — or any standalone HTML page meant to be looked at — invoke the `html-style` skill first. It holds the typography and icon rules, shared with Codex (where the same feature is called a site), so neither runtime carries its own copy.
+The `html-style` skill holds the typography and icon rules for Artifacts and any standalone HTML page meant to be looked at. It is shared with Codex (where the same feature is called a site), so neither runtime carries its own copy. Apply it **only when the user invokes `/html-style` themselves** — never load it on your own just because the task produces an Artifact or HTML page.
 
 ## Creating a new skill — home is `~/.agents/skills/`
 
