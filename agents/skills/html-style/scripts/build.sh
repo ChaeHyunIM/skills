@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# 본문 HTML 하나를 게시용 단일 파일로 조립한다.
-# CSS 세 파일은 여기서만 이어 붙이고 모델은 읽지 않는다 — 그래야 컨텍스트에 안 들어온다.
-#
-#   scripts/build.sh "<페이지 제목>" body.html out.html
+# 큰 CSS와 내장 폰트 데이터를 에이전트가 읽지 않아도 되도록 여기서 파일을 이어 붙인다.
 set -euo pipefail
 
 title="${1:?페이지 제목}"

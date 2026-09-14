@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# 조립된 파일을 브라우저 골격으로 감싸 라이트·다크·모바일 스크린샷 3장을 찍는다.
-# 게시 전 한 번만 본다. 반복 루프를 돌리지 않는다.
-#
-#   scripts/preview.sh out.html [출력 디렉토리]
+# 입력 파일에는 html·head·body 태그가 없어 미리보기용으로 붙인다.
 set -euo pipefail
 
 page="${1:?조립된 HTML 경로}"
@@ -23,7 +20,7 @@ else
 fi
 
 url="file://$(cd "$(dirname "$wrapped")" && pwd)/$(basename "$wrapped")"
-"${pw[@]}" screenshot --viewport-size=1280,800 --full-page --wait-for-timeout=1500 "$url" "$dir/light.png"
-"${pw[@]}" screenshot --viewport-size=1280,800 --color-scheme=dark --wait-for-timeout=1500 "$url" "$dir/dark.png"
-"${pw[@]}" screenshot --viewport-size=390,844 --wait-for-timeout=1500 "$url" "$dir/mobile.png"
+"${pw[@]}" screenshot --viewport-size=1280,800 --color-scheme=light --full-page --wait-for-timeout=1500 "$url" "$dir/light.png"
+"${pw[@]}" screenshot --viewport-size=1280,800 --color-scheme=dark --full-page --wait-for-timeout=1500 "$url" "$dir/dark.png"
+"${pw[@]}" screenshot --viewport-size=390,844 --color-scheme=light --full-page --wait-for-timeout=1500 "$url" "$dir/mobile.png"
 printf '%s\n' "$dir/light.png" "$dir/dark.png" "$dir/mobile.png"
