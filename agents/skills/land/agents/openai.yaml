@@ -1,5 +1,5 @@
 interface:
-  display_name: "PR 병합"
+  display_name: "Land"
   short_description: "이번에 지정하거나 확인한 티켓의 PR을 검사한 뒤 병합합니다."
   default_prompt: "$land로 이번에 내가 지정하거나 확인한 티켓의 PR을 병합해 줘."
 policy:

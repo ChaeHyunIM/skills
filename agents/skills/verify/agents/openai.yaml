@@ -1,5 +1,5 @@
 interface:
-  display_name: "PR 검증"
+  display_name: "Verify"
   short_description: "PR에서 남았거나 달라진 완료 조건을 확인하고 검증 결과를 적습니다."
   default_prompt: "$verify로 이 PR에서 남았거나 달라진 완료 조건을 확인하고, 유효한 기존 검증 결과는 재사용해 줘."
 policy:

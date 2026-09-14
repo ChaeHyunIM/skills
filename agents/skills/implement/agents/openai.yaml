@@ -1,5 +1,5 @@
 interface:
-  display_name: "티켓 구현"
+  display_name: "Implement"
   short_description: "지정한 티켓을 구현하고 검증한 뒤 결과를 적은 PR을 준비합니다."
   default_prompt: "$implement로 지정한 티켓을 구현하고, 완료 조건을 검증한 결과를 PR에 적어 줘."
 policy:
