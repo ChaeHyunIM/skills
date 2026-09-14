@@ -11,6 +11,8 @@
 - `.vbg-opening[data-layout="split"]` 은 claim 7열 + proof 5열. 기본(속성 없음)은 세로 스택.
 - `.vbg-split` 은 7:5, `[data-ratio="equal"]` 은 1:1, `[data-ratio="wide"]` 는 넓은 쪽 우선.
 - `.vbg-stack[data-gap="tight|group|section"]` 로 세로 간격.
+- `.vbg-next-step` 은 자식이 정확히 둘(라벨 `p.vbg-label` + 문단)일 때만 4:8 좌우 배치. 셋 이상이면 전부 세로 스택. `display:grid` 라 `vbg-section` 과 한 요소에 겹치지 않는다.
+- `.vbg-stat[data-priority]` 는 값 크기를 바꾼다. 같은 strip 의 동등한 근거에는 섞지 않는다. 행 높이가 어긋난다.
 
 ## 타입과 근거
 
@@ -101,4 +103,4 @@
 - `table.vbg-custom-peer-cols`: 801px 이상에서 `table-layout: fixed`, 첫 열 20%. 동등 비교 열의 폭을 맞춘다.
 - `.vbg-custom-logo`: 112px 폭 브랜드 로고 이미지.
 - 테마 브릿지: 루트의 `data-theme` 을 `.vbg-report` 의 `color-scheme` 으로.
-- `word-break: keep-all`: h1~h4, `.vbg-title`, `.vbg-lede`, `.vbg-custom-step-title`, `th`.
+- `word-break: keep-all` + `overflow-wrap: break-word`: `.vbg-report` 전체. 한글을 어절 단위로 끊는다. `[lang="ja"]` 는 `normal` 로 예외.

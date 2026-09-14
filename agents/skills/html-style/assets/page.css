@@ -36,9 +36,18 @@
   color: var(--vbg-text-secondary);
 }
 
-/* 한국어 페이지: 헤딩·리드가 어절 중간에서 끊기지 않게 한다. */
-.vbg-report :is(h1, h2, h3, h4, .vbg-title, .vbg-lede, .vbg-custom-step-title, th) { word-break: keep-all; }
+/* 한국어 페이지: 문서 전체를 어절 단위로 끊는다. W3C klreq 가 규정한 한국어 조판 기준이다.
+   overflow-wrap 은 어절로 묶었을 때 긴 로마자 토큰·URL 이 컨테이너를 뚫는 것을 막는다.
+   일본어는 어절 사이 공백이 없어 keep-all 이면 줄바꿈 자체가 사라지므로 되돌린다. */
+.vbg-report { word-break: keep-all; overflow-wrap: break-word; }
+.vbg-report :lang(ja), .vbg-report [lang="ja"] { word-break: normal; }
 .vbg-report .vbg-opening-claim > .vbg-context { margin-top: var(--vbg-space-6); }
+
+/* 헤딩 바로 뒤에 오는 표·지표는 문단 간격(space-3)으로 붙인다.
+   brand.css 는 근거 블록에 그룹 간격(space-8)을 주는데, 앞에 소개 문단이 있을 때를 전제한 값이다. */
+.vbg-report .vbg-section > :is(h2, h3, h4) + :is(.vbg-table-wrap, .vbg-stat-strip, .vbg-comparison, .vbg-chart, figure) {
+  margin-block-start: var(--vbg-space-3);
+}
 
 /* 두 플랫폼을 같은 폭으로 놓아 비교 기준을 맞춘다. 자동 열 폭은 긴 셀에 폭을 몰아준다. */
 @media (min-width: 801px) {
