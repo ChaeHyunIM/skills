@@ -11,7 +11,7 @@ exploration into a file-by-file implementation plan in the issue. Required exter
 under 정책과 제약; chosen functions, components, cache mechanisms and test commands belong in the PR.
 
 Use `## 완료 조건` in new tickets. `Acceptance criteria` and `검수 기준` are read-only legacy aliases,
-not additional sections or new vocabulary. The adapter reads these headers and `-`, `*`, `+` bullets,
+not additional sections or new vocabulary. Conditions are the `-`, `*`, `+` bullets under that heading,
 with or without checkboxes. Do not rewrite old tickets wholesale to migrate the heading.
 
 - Derive each condition from the goal, approved policy or linked design. Do not invent policy.
@@ -49,8 +49,7 @@ requires a human-applied migration, record that dependency; the agent must not a
 
 ## Verify and keep one current PR record
 
-Read conditions via `"$TRACKER" criteria <N>`. Do not duplicate the Markdown parser in skills.
-At implementation start, read each condition the way `verify` will — is there an observable result one of
+Read the conditions from the issue's `## 완료 조건` section as published. At implementation start, read each condition the way `verify` will — is there an observable result one of
 its routes can check? Missing or ambiguous conditions go through `implement`'s existing When stuck path
 before coding; do not synthesize pass criteria on the fly.
 
@@ -135,9 +134,9 @@ intent-collision rules. A newly discovered remaining condition outside the appro
 exception scope must not be silently included: leave that item unmerged, report it, and continue independent
 items without opening a second confirmation. Missing verification alone is not an intent-collision valve.
 
-After sync and typecheck, immediately **before merge**, update the issue through the adapter with true
-only for 충족. Approval never changes a result to 충족. A failed checkbox write stops that item's merge;
-report the adapter error, do not bypass it. A subsequent merge failure does not invalidate genuine checks.
+After sync and typecheck, immediately **before merge**, update the issue checkboxes per the rules in
+[Checkbox update](#checkbox-update), true only for 충족. Approval never changes a result to 충족. A failed
+checkbox write stops that item's merge; report the error, do not bypass it. A subsequent merge failure does not invalidate genuine checks.
 
 After a confirmed merge with any remaining conditions, post a factual comment on **both** the PR and
 issue. PR: condition, 미충족/미검증, reason/evidence and explicit approval. Issue: short natural Korean,
@@ -161,30 +160,22 @@ Put remaining conditions at the front of the land report and link both comments.
 follow-up tickets automatically. If either comment fails, report the missing record and retry only that
 comment after checking for an existing copy; do not repeat the merge or invent a successful post.
 
-## Adapter contract
+## Checkbox update
 
-`criteria <id>` returns `{issue,updatedAt,bodyHash,section,items:[{index,text,checked}]}`. Indices are
-one-based and local to that snapshot, not permanent identifiers. `section: null` or empty items means
-no usable conditions; never treat that as all conditions passing. Multiple matching sections or nested
-checkboxes are refused as ambiguous. Continuation text stays part of its condition.
+`land` is the only writer of issue checkboxes, and the write has one legitimate shape: the checkbox
+characters change, nothing else does. CONTRACT's [완료 조건] states the postconditions; this is how to meet
+them with whatever tracker tool the session has.
 
-`check <id> <criteria-snapshot.json> <checks.json>` accepts a full batch of `{index,text,checked}` results,
-one for every item from the snapshot. Preserve the exact text; `checked` is boolean. A legacy plain bullet
-is converted to a checkbox in place. No headings, wording, ordering or other sections are rewritten.
+1. Re-read the issue body immediately before writing. A copy read earlier in the session is stale by
+   definition; someone may have edited the body since.
+2. Locate each condition by its exact text. If a condition's text is not found exactly once, or the
+   section is missing or duplicated, stop and report. Do not guess which bullet was meant.
+3. Prefer the tool's partial edit (an exact-match replace of `- [ ] <text>` with `- [x] <text>`) over
+   replacing the whole description. A legacy plain bullet becomes a checkbox in place.
+4. Read the body back. The only difference from the re-read body must be the checkbox characters. Any
+   other difference (wording, ordering, headings, whitespace the platform normalized) is reported as-is;
+   do not revert, do not retry a stale batch, do not define a normalization allowance on the spot.
+5. A batch that changes nothing does not write.
 
-```bash
-"$TRACKER" criteria <N> > <scratchpad>/criteria-<N>.json
-# PR 검증 결과로 checks-<N>.json을 작성한다. 모든 항목을 일괄 통과시키지 않는다.
-"$TRACKER" check <N> <scratchpad>/criteria-<N>.json <scratchpad>/checks-<N>.json
-```
-
-Both adapters share one Python 3 parser and the read/prepare/re-read/write/read-back sequence. The writer
-compares issue identity, timestamp, full body hash and condition text before writing, then checks the full
-saved body. No-op batches do not write. This narrows a concurrent-edit window; it is **not atomic CAS**.
-A concurrent edit after the last read may still be overwritten. Do not promise full concurrency protection.
-If the platform normalizes Markdown and verification fails, inspect that real response before defining a
-normalization allowance. Never discard a mismatch, relax preservation speculatively or auto-retry a stale
-batch. No credentials or live issues are needed to run the adapter tests.
-
-Offline validation: `python3 ~/.agents/skills/agent-loop/adapters/tests/test_criteria.py`.
-The suite mocks both backends, including stale reads, failed writes and preservation mismatches.
+This narrows the concurrent-edit window; it is **not atomic**. An edit landing between the re-read and
+the write can still be overwritten, so do not promise full concurrency protection.

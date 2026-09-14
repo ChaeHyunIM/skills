@@ -1,115 +1,72 @@
 ---
 name: to-tickets
-description: Breaks a plan, spec, or the current conversation into flow-unit tracer-bullet tracker tickets written in Korean — each owning one complete user-facing flow end to end, safe to implement in parallel with its siblings, declaring its blocking edges, and published in the ready state. Binds designed UI work to its Figma node as the design source of truth and spells out only what the design does not answer. Use whenever the user asks to turn a plan, spec, discussion, decision, or parent issue into tickets or issues, or to split/break down work into implementable units. Triggers on English phrasings like "turn this into tickets", "file issues for this", "break this down into issues", "create GitHub issues", "split this plan into tasks", "make tickets from this discussion", and on Korean phrasings like "티켓으로 쪼개줘", "티켓 만들어줘", "이슈 발행해줘", "이슈로 끊어줘", "이슈 만들어줘", "작업 단위로 나눠줘", "티켓 발행", "이 계획 티켓화해줘".
+description: 계획·스펙·대화·부모 이슈를 구현 가능한 트래커 티켓으로 쪼개 발행할 때. "티켓으로 쪼개줘", "이슈 발행해줘", "작업 단위로 나눠줘", "turn this into tickets", "file issues for this". 티켓·이슈를 새로 만드는 모든 작업이 여기를 거친다.
 ---
 
 # to-tickets
 
-Break a plan, spec or conversation into a set of **tickets** — tracer-bullet vertical slices, each
-declaring the tickets that block it. Published tickets land in the `ready` state and are picked up
-by the `implement` skill.
+계획·스펙·대화를 티켓 묶음으로 자른다. 티켓 하나는 사용자에게 보이는 흐름 하나를 끝에서 끝까지 소유한다. 형제 티켓과 동시에 구현해도 안전하고, 자기를 막는 티켓을 네이티브 엣지로 달고, `ready` 로 게시된다. 그 다음은 `implement` 가 집어 간다.
 
-**Read `~/.agents/skills/agent-loop/CONTRACT.md` before starting** — the states, the tracker adapter and
-the output convention of the loop these tickets enter live there. Resolve `$TRACKER` per CONTRACT's
-[Tracker adapter] before publishing.
+시작할 때 읽는다.
 
-**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for 완료 조건 authoring,
-verification, PR evidence and land-only issue checkboxes.
+- `~/.agents/skills/agent-loop/CONTRACT.md`. 도구 원칙, 상태, 엣지, 글의 규약.
+- `~/.agents/skills/agent-loop/references/acceptance-criteria.md` 의 「Write the outcome, not the patch」. 완료 조건 쓰는 법.
+- `references/slicing-rules.md`. 어디서 자르는지.
 
-## A ticket binds its truths, it does not restate them
+## 티켓은 진실을 묶는다, 옮겨 적지 않는다
 
-**Each ticket defines the outcomes, boundaries and constraints of its unit of work.** Explore the
-codebase deeply enough to establish feasibility and dependencies, but write the issue as natural-language
-What. The implementer chooses How and explains it in the PR. Bind supporting truths instead of copying
-a code investigation into the issue:
+- 디자인·UX 의 진실은 Figma 노드다. 노드가 PRD 를 겸한다. 프레임과 플로우가 기능이 무엇인지 말한다.
+- 도메인과 현재 동작의 진실은 코드와 문서다. CONTEXT.md, ADR.
+- 티켓 본문은 목표, 두 진실을 가리키는 링크, 그리고 델타다. 두 진실이 말하지 않는 것만 적는다. 요구 동작, 상태, 데이터 규칙, 범위 경계.
+- 구현자가 How 를 고르고 PR 에서 설명한다. 기술 계약은 소비처나 외부 연동이 이미 요구할 때만 적는다. 구현 아이디어는 아니다.
+- 디자인을 산문이나 스크린샷으로 옮기지 않는다. 첫 디자인 수정에서 썩는다. 링크만 두고 구현자가 그때 가져온다.
 
-- **Design/UX truth = the Figma node** (when the surface has a separate design, e.g. a mobile app). The node
-  doubles as the PRD: its frames and flows say what the feature is.
-- **Domain and current-behaviour truth = the code and docs** (CONTEXT.md, ADRs).
-- **The ticket body = the goal, pointers to both truths, and the delta** — everything neither truth
-  expresses: required behaviour, states, data rules and scope boundaries. Carry a technical contract only
-  when it is already required by a consumer or an external integration, not merely an implementation idea.
+## 작업 순서
 
-Never copy design content into the ticket as prose or screenshots — it breaks the single source of truth
-and goes stale on the first design edit. Link the node; the implementer fetches it live.
-
-## Progress checklist
+진행 체크리스트를 응답에 복사해 두고 지우며 간다.
 
 ```
 Ticket breakdown progress:
-- [ ] 1  Gather context
-- [ ] 2  Explore the codebase (optional)
-- [ ] 3  Gather design truth (only if designed UI is involved)
-- [ ] 4  Draft vertical slices and edges; write 완료 조건 and compare goal ↔ conditions
-- [ ] 5  Pull the policy gaps out of every slice
-- [ ] 6  Quiz the user — iterate until approved
-- [ ] 7  Publish to the tracker in dependency order
+- [ ] 1  맥락
+- [ ] 2  코드
+- [ ] 3  디자인 진실 (UI 가 있을 때만)
+- [ ] 4  슬라이스·엣지·완료 조건
+- [ ] 5  미결 정책 뽑기
+- [ ] 6  사용자 승인
+- [ ] 7  게시
+- [ ] 8  읽어서 확인
 ```
 
-## 1. Gather context
+### 1. 맥락
 
-Work from whatever is already in the conversation. If the user passes a reference (a spec path, an issue
-number or URL) as an argument, fetch it and read its full body and comments.
+대화에 이미 있는 것으로 시작한다. 인자로 스펙 경로나 이슈가 오면 본문과 코멘트를 전부 읽는다.
 
-## 2. Explore the codebase (optional)
+### 2. 코드
 
-If you have not already explored the codebase, do so to understand the current state. Ticket titles and
-descriptions should use the project's domain glossary, and respect ADRs in the area you're touching.
+아직 안 봤으면 코드베이스를 본다. 티켓 제목과 본문은 프로젝트의 용어집을 따르고, 손대는 영역의 ADR 을 존중한다. prefactor 기회를 찾는다. "바꾸기 쉽게 만들고, 쉬운 변경을 한다."
 
-Look for opportunities to prefactor. "Make the change easy, then make the easy change."
+### 3. 디자인 진실
 
-## 3. Gather design truth
+백엔드·인프라만이면 건너뛴다. 별도 디자인이 있는 UI 를 건드리면 다음을 한다.
 
-Skip for pure backend/infra work. When a slice touches a UI surface that has a separate design:
+1. Figma 노드 링크를 모은다. 대화에 없으면 사용자에게 묻는다. 디자인된 UI 에 링크가 없으면 진행 불가다. 묶을 진실이 없다.
+2. 디자인을 PRD 로 읽는다. Figma MCP 로 프레임과 플로우를 본다. 화면 목록, 이동, 디자인이 그린 상태와 인터랙션. 슬라이스 경계가 프레임·플로우와 맞으면 그 자리에서 자른다.
+3. 갭을 적는다. 슬라이스마다 디자인이 답하지 않는 질문. 로딩·빈·에러 상태, 인터랙션 엣지 케이스, 데이터 규칙(정렬·페이징·한도), 안 그린 상태의 카피. 코드·문서에서 답을 찾으면 출처를 적고, 못 찾은 것은 [6] 으로 가져간다.
+4. 반대 방향도 본다. 디자인이 코드 현실과 어긋나는 곳. 없는 데이터, 용어집과 다른 어휘, ADR 과 충돌하는 플로우. 사용자에게 올린다. 어느 쪽도 조용히 이기지 않는다.
 
-1. **Collect the Figma node links** covering the work — from the conversation, or ask the user. For
-   designed UI a missing link is a blocker, not a nice-to-have: without it the ticket has no design truth
-   to bind to.
-2. **Read the design as the PRD.** Walk the frames and flows through the Figma MCP — its metadata
-   tool (structure) and screenshot tool (visuals); use the connected MCP's actual tools, never guess
-   at tool names:
-   screen inventory, navigation, the states and interactions the design *does* show. Let slice boundaries
-   align with frames or flows where that is the natural cut.
-3. **Gap analysis.** For each slice, list the questions the design does not answer: loading/empty/error
-   states, interaction edge cases, data rules (sorting, paging, limits), copy for undrawn states. Resolve
-   each from code or docs where possible, recording the source; carry the unresolved ones to [6].
-4. **Reverse check.** Where the design contradicts code reality — data that doesn't exist, domain
-   vocabulary that differs from the glossary, flows that conflict with an ADR — surface it to the user.
-   Design and codebase complement each other in both directions; neither silently wins.
+### 4. 슬라이스·엣지·완료 조건
 
-## 4. Draft vertical slices
+- `references/slicing-rules.md` 대로 자른다. 수직 슬라이스, soft 엣지만, 앞을 가리키는 의존 금지, 마이그레이션 끌어올리기, 넓은 리팩터의 expand–contract.
+- 티켓마다 완료 조건을 쓴다. 관찰 가능한 결과, 목표와 조건의 양방향 대조, 머지 전 검증 경로. 출시 후에만 볼 수 있는 조건은 후속 티켓으로 떼어 엣지를 걸고 제안에 넣는다. 범위를 잃지 않는다.
+- 티켓마다 블로커를 정한다. 먼저 끝나야 하는 다른 티켓. 없으면 바로 시작할 수 있다.
 
-**Read `~/.agents/skills/to-tickets/references/slicing-rules.md` and cut according to it.** It defines the
-vertical slice, hard vs soft blocking edges, the ban on forward-pointing dependencies, migration hoisting,
-and the expand–contract exception for wide refactors.
+### 5. 미결 정책 뽑기
 
-Draft each ticket's 완료 조건 using the shared reference: observable results, goal ↔ conditions
-comparison, and a pre-merge verification route. Fold genuinely post-release observations into owned
-follow-up tickets and their native edges in the proposed breakdown; do not lose the original scope.
+모든 슬라이스에서 한다. [3] 을 건너뛴 백엔드·인프라도 포함이다.
 
-Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A
-ticket with no blockers can start immediately.
-
-## 5. Pull the policy gaps out of every slice
-
-This step runs for **every** slice — backend and infra included, where [3] never ran. A design gap is a
-question about what the screen looks like; a **policy gap** is a question about what the product does, and
-it is the one an implementing agent silently answers in code.
-
-Judge it yourself. Whenever you would settle a question by picking a reasonable answer rather than reading
-one out of the spec, the code, CONTEXT.md or an ADR, that is a 미결 정책 — and it does not get an answer
-invented here. Where you do find the answer, record its source.
-
-**Never resolve a 미결 정책 in chat alone.** A chat answer binds nobody and is gone next session; the
-decision belongs to the team, on the tracker, where it can be read months later. Post every one as a single
-tracker comment before publishing:
-
-```bash
-"$TRACKER" comment <parent-id> <body-file>
-```
-
-Post it on the **parent ticket** when the run came from one. With no parent, ask the user which ticket to
-hang it on — never skip the record because there is no obvious home for it.
+- 디자인 갭은 «화면이 어떻게 보이나» 이고, 미결 정책은 «제품이 무엇을 하나» 다. 후자는 구현 에이전트가 코드로 조용히 답해 버리는 것이다.
+- 판단 기준은 하나다. 스펙·코드·CONTEXT.md·ADR 에서 읽어 내지 않고 «합리적인 답» 을 골라야 한다면 그것이 미결 정책이다. 여기서 답을 지어내지 않는다. 답을 찾았으면 출처를 적는다.
+- 채팅으로만 정하지 않는다. 채팅 답은 아무도 구속하지 않고 다음 세션에 사라진다. 게시 전에 트래커 코멘트 하나로 전부 올린다. 부모 티켓에서 출발했으면 부모에. 부모가 없으면 어디에 달지 사용자에게 묻는다. 집이 없다고 기록을 건너뛰지 않는다.
 
 ```markdown
 ## 미결 정책 — <티켓 제목 또는 기능 영역>
@@ -120,109 +77,90 @@ hang it on — never skip the record because there is no obvious home for it.
 - 추천: <A 또는 B, 한 줄 근거>
 ```
 
-## 6. Quiz the user
+### 6. 사용자 승인
 
-Before presenting the breakdown, call the adapter once:
+번호 목록으로 보여 준다. 티켓마다.
 
-```bash
-"$TRACKER" planning-context
-```
+- 제목
+- 무엇을 막는가. 먼저 끝나야 하는 티켓과 그 이유 한 절. 네이티브 엣지와 본문의 배경 한 문장이 된다. 본문 목록이 아니다.
+- 무엇을 넘겨주는가. 이 티켓이 동작하게 만드는 종단 간 동작.
+- 완료 조건. 실제 체크박스 문장.
+- 열린 디자인 갭. [3] 에서 코드·문서로 못 푼 것.
+- 미결 정책. [5] 의 항목과 추천 답.
+- 네이티브 속성. 아래 「네이티브 속성」 대로 제안한 값. 근거 한 줄씩.
 
-Treat its `properties` array as a capability response, not as a fixed tracker schema. When it is non-empty,
-**read `~/.agents/skills/to-tickets/references/planning-properties.md`** and build the proposals from it. When it
-is empty, skip property work entirely. The skill never branches on a platform name.
+묻는다.
 
-Present the breakdown as a numbered list. For each ticket:
+- 굵기가 맞나. 너무 굵은가, 너무 잘았나.
+- 엣지가 맞나. 각 티켓이 진짜 자기를 막는 것에만 걸려 있나. 모든 엣지가 soft 인가. hard 엣지가 보이면 두 티켓을 합친다.
+- 합칠 것, 더 자를 것이 있나.
+- 열린 디자인 갭과 미결 정책 하나하나를, 추천 답을 붙인 구체 질문으로.
+- 속성 제안을 통째로 받을지, 바꿀 것만 말할지. 속성마다 따로 묻지 않는다.
+- 이번에 안 하는 것은 무엇인가. 읽는 이가 포함됐다고 짐작할 이웃 동작. 옆 화면, 후속 상태, 디자인에는 있지만 이번엔 안 만드는 케이스. 목록을 제안하고 사용자가 확인한다.
 
-- **Title**
-- **Blocked by**: which other tickets must complete first, if any, and in one clause why (this becomes the
-  native edge plus a sentence of background in the body — never a body list; CONTRACT's [Blocking edges])
-- **What it delivers**: the end-to-end behaviour this ticket makes work
-- **완료 조건**: show the actual checkbox text, including backend-only outcomes where applicable
-- **Open design gaps**: the questions from [3] that code and docs could not resolve, if any
-- **미결 정책**: the policy gaps from [5], if any, each with its recommended answer
-- **Tracker properties**: each proposed native value (or `unset`) with one short reason; omit when the adapter
-  advertises no properties
+확정된 «안 하는 것» 은 맞닿은 티켓의 `## 목표` 끝에 한 줄로 들어간다. "여기까지 — ○○ 는 이번 범위 아님". 티켓은 만들 것만 적으니, 안 적은 경계는 구현 에이전트에게 보이지 않는다.
 
-Ask:
+승인까지 반복한다.
 
-- Does the granularity feel right? (too coarse / too fine)
-- Are the blocking edges correct — does each ticket depend only on tickets that genuinely gate it, and is
-  **every edge soft** (each side merge-consistent alone)? A hard edge surfacing here means two tickets
-  should be fused, not sequenced.
-- Should any tickets be merged or split further?
-- Every unresolved design gap and every 미결 정책, as a concrete question with your recommended answer.
-- Accept all proposed tracker properties, or name only the overrides. Ask once for the whole set rather than
-  interrogating the user property by property.
-- **What is out of scope this time?** Name the adjacent behaviour a reader could reasonably assume is
-  included but isn't — the neighbouring surface, the follow-up state, the case the design shows but this
-  round won't build. Propose the list; the user confirms or corrects it.
+- 열린 디자인 갭이나 답 없는 미결 정책이 있는 티켓은 게시하지 않는다. 답은 갭 목록에 «사용자 결정» 을 출처로 적는다.
+- 사용자가 여기서 못 정하는 미결 정책(팀이 정해야 하거나 아직 아무도 안 정한 것)이 있으면 그 티켓은 게시하지 않는다. [5] 의 코멘트를 열린 질문으로 남기고, 그것에 안 걸린 슬라이스만 게시하고, 어느 티켓이 어느 코멘트를 기다리는지 말한다. 게시하려고 추측하는 것이 이 단계가 막는 바로 그 실패다.
+- 사용자가 정한 답은 티켓 본문에만 넣지 않고 [5] 코멘트에 답글로도 남긴다. 티켓은 닫히고 묻히지만 결정 스레드는 찾을 수 있다.
 
-Each confirmed out-of-scope item goes into the `## 목표` of the ticket it borders, as one closing line
-("여기까지 — ○○ 는 이번 범위 아님"). Tickets describe only what to build, so an unstated boundary is
-invisible to the implementing agent; putting it in the ticket the agent actually reads beats a separate
-scope document it never opens.
+### 7. 게시
 
-Iterate until the user approves. **Never publish a ticket with an open design question or an unanswered
-미결 정책** — the answer goes into the ticket's gap list with its source recorded as the user's decision. A
-ticket is always a complete spec; the implementing agent should never hit `blocked` on a question this step
-could have settled.
+블로커 먼저, 의존 순서로 하나씩 만든다. 그래야 엣지가 진짜 id 를 가리킨다. 티켓마다 만들 때 함께 건다.
 
-When the user cannot settle a 미결 정책 here — it needs the team, or a decision nobody has made yet —
-**do not publish that ticket.** Leave the tracker comment from [5] standing as the open question, publish
-the slices that do not depend on it, and tell the user which ticket is waiting on which comment. Guessing
-so the ticket can ship is the exact failure this step exists to prevent.
+- 루프 상태 `ready`. 블로커가 열려 있어도 `ready` 다. 상태는 «스펙이 끝났다» 이고 시작 가능 여부는 엣지가 말한다.
+- 부모 관계. 부모 티켓에서 출발한 실행이면 반드시. 본문에 `## Parent` 절이 없으니 네이티브 관계가 유일한 기록이다. 트래커가 부모를 못 걸면 고아를 만들지 말고 멈추고 말한다.
+- blocked-by 엣지. 승인된 블로커마다 하나.
+- 승인된 네이티브 속성. `unset` 으로 승인된 것은 건드리지 않는다.
+- 본문은 아래 템플릿. 한국어, 비개발자도 읽는다. `korean-output` 을 적용한다. 기획자·디자이너가 `## 목표` 와 `## 완료 조건` 만 읽어도 무엇이 나오고 어떻게 확인하는지 알아야 한다. 백엔드 전용 티켓은 개발자가 관찰할 결과를 적어도 된다.
 
-Answers the user does settle here go back on the [5] comment as a reply, not only into the ticket body —
-the ticket gets closed and buried, the decision thread stays findable.
+부모 티켓은 닫지도 고치지도 않는다.
 
-## 7. Publish
+### 8. 읽어서 확인
 
-Publish one ticket per slice **in dependency order (blockers first)** so each ticket's blocking
-edges can reference real ids:
+게시한 티켓을 전부 다시 읽는다. 아래 「게시 뒤 검사」 가 전부 참일 때만 끝났다고 보고한다. 어긋난 것은 그 자리에서 고치고 다시 읽는다.
 
-```bash
-TRACKER_PARENT=<parent-id> "$TRACKER" create "<제목>" <body-file> '<approved-properties-json>'  # lands in 'ready'
-"$TRACKER" add-edge <id> <blocker-id>        # once per blocking edge
-```
+## 네이티브 속성
 
-When the run came from a parent ticket, **always** pass `TRACKER_PARENT` — it is the only record of the
-parent, because the body has no `## Parent` section (CONTRACT's [Tracker adapter]). Omit the variable only
-for a run with no parent. An adapter that cannot register a native parent refuses instead of publishing an
-orphan; stop and tell the user rather than retrying without it.
+트래커가 estimate · cycle · priority · due date 같은 속성을 가지면 제안한다. 트래커에 없는 속성은 제안하지 않고, 속성 값을 본문에 옮겨 적지 않는다.
 
-Build one compact JSON object per ticket from the approved property keys. Omit keys approved as `unset` or
-left at the adapter default, and omit the third argument when the object is empty. The adapter validates the
-whole object before creation; if a value became stale, return to the proposal instead of dropping the property
-and publishing a different ticket.
+- 크기(estimate). 다른 슬라이스와 비교한 불확실성·복잡도·범위다. 시간이 아니고 날짜로 바꾸지 않는다. 팀이 쓰는 척도의 값만 쓴다. 하나가 유독 크면 최대값을 억지로 넣기보다 자른다.
+- 기간(cycle). 의존 순서로 배치한다. 각 사이클에 이미 들어간 것에 이번 제안을 더해 가며 전체가 들어갈 때만 넣는다. 블로커가 그 사이클 안에 끝날 수 없으면 다음 사이클이나 `unset`. 용량을 지어내지 않는다.
+- 우선순위(priority). 출처가 진짜 긴급함을 말하지 않으면 기본값을 둔다. **Urgent 는 추론하지 않는다.** 알림이 가거나 운영이 움직일 수 있어서, 사용자나 출처가 명시한 경우에만 쓴다.
+- 마감(due date). 출처나 사용자가 말한 실제 달력 제약에만. 크기·처리량·사이클에서 계산하지 않는다. 예측은 마감이 아니다.
+- 사용자가 이미 지정한 값은 보존한다. 근거가 없으면 `unset` 으로 보여 주고 게시 때 건드리지 않는다.
 
-The native edge is the **only** record of a blocker (CONTRACT's [Blocking edges]) — the body carries no
-blocker list, only the reason as a sentence where it matters. Because there is no second copy to fall back
-on, **verify the edges after publishing**: for every ticket, read them back and compare against the
-approved breakdown.
+## 게시 뒤 검사
 
-```bash
-"$TRACKER" blockers <id>     # must list exactly the approved blockers for <id>
-```
+티켓마다 참이어야 한다.
 
-A mismatch — a missing edge, or one pointing at the wrong ticket — is fixed on the spot with `add-edge`
-and re-read; never report the run done while a ticket's edges differ from the breakdown the user approved.
+1. 루프 상태 표식이 `ready` 하나만 붙어 있다.
+2. 부모에서 출발했으면 부모 관계가 걸려 있다.
+3. blocked-by 엣지가 승인된 블로커와 정확히 같다. 빠진 것도, 다른 티켓을 가리키는 것도 없다.
+4. 본문에 블로커 목록이 없다. 이유 한 문장만 있다.
+5. 본문의 완료 조건이 [6] 에서 승인한 문장 그대로다.
+6. 미결 정책 코멘트가 지정한 티켓에 올라가 있고, 사용자가 정한 답이 답글로 있다.
+7. 속성이 승인한 값이다. `unset` 은 비어 있다.
 
-`create` puts every published ticket in `ready`, **blocked ones included** — the state says the spec is
-complete, not that work can start today. Startability comes from the edges.
+## 금지 패턴
 
-**Ticket bodies are written in Korean, for non-developers too** — per CONTRACT's [Output convention],
-apply the `korean-output` skill and avoid developer-translationese: a 기획자·디자이너 reading only `## 목표`
-and `## 완료 조건` must understand what ships and how to check it. Backend-only tickets may state
-developer-observable outcomes. Do not close or modify the parent ticket.
+이름이 있어야 피할 수 있다. 하나라도 있으면 게시 전에 뺀다.
 
-Avoid file-by-file changes, function/component assignments, chosen endpoint/type shapes and code snippets
-in the issue. If an existing consumer, external integration or approved decision requires an exact contract,
-link its source under 정책과 제약 and quote only what the implementer must preserve. Put implementation
-choices, code structure and verification commands in the PR.
+- 디자인을 산문이나 스크린샷으로 옮긴 본문
+- 파일 단위 변경 목록, 함수·컴포넌트 배정, 고른 엔드포인트·타입 형태, 코드 조각
+- 본문의 블로커 목록 (`## Blocked by`)
+- 채팅에서만 정한 미결 정책
+- 답 없는 질문을 안고 게시된 티켓
+- 게시하려고 지어낸 «합리적인 답»
+- 추론으로 넣은 Urgent, 계산으로 만든 마감
+- 부모 관계 없이 게시된 하위 티켓
+- «완료 조건» 자리에 적힌 작업 목록 ("타입 체크 통과, API 구현 완료")
 
-<issue-template>
+## 이슈 템플릿
 
+```markdown
 ## 목표
 
 이 티켓이 동작하게 만드는 종단 간 동작 — 사용자 관점에서, 랜딩하면 무엇이 데모 가능해지는가.
@@ -255,8 +193,8 @@ choices, code structure and verification commands in the PR.
 관찰 결과는 필수이고 전제·행동은 필요할 때만 적는다. 사용자 표면이 있으면 사용자가 겪는 결과를,
 백엔드·스키마 전용 티켓이면 개발자가 확인할 결과를 적는다. 공유 reference의 예시를 따르며,
 타입 체크나 파일 수정 목록으로 대체하지 않는다.
+```
 
-</issue-template>
+## 파일
 
-블로커 목록은 본문에 쓰지 않는다 — 네이티브 엣지가 유일한 기록이다. 막히는 이유가 자명하지 않으면 그 이유만
-관련 절에 한 문장으로 남긴다("YOU-70 의 schema 컬럼을 읽으므로 그 PR 이 merge 된 뒤 시작").
+- `references/slicing-rules.md` 수직 슬라이스, soft 엣지, 아래로만 향하는 의존, 마이그레이션 끌어올리기, expand–contract. 사고 기록은 `agent-loop/references/evidence.md`.

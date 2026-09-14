@@ -1,252 +1,157 @@
 ---
 name: land
-description: Merges the tickets the human names, treating the arguments or confirmed queue selection as the merge signature. Syncs, verifies, and merges each PR in order and reports in Korean. Use only when the user explicitly invokes `$land` in Codex or `/land` in Claude Code. Never merges an unconfirmed ticket or resolves an intent collision.
+description: "`/land <N...>`. 사람이 지명한 티켓의 PR 을 순서대로 sync·검증·머지한다. 인자가 머지 서명이다."
+disable-model-invocation: true
 ---
 
 # land
 
-Merge the tickets the human names, in one run: order, sync, resolve, verify, merge, report.
+사람이 지명한 티켓을 한 번의 실행으로 머지한다. 순서 → sync → 충돌 해소 → 타입 체크 → 체크박스 → 머지 → 보고.
 
-**Read `~/.agents/skills/agent-loop/CONTRACT.md` before starting** — states, the tracker adapter,
-worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
-CONTRACT's [Tracker adapter] before the first tracker call.
+사람만 부르는 스킬이라 **호출 자체가 머지 서명이다.** 인자, 또는 [3] 에서 고른 것이 사람의 판단이고 이 스킬은 실행만 한다. [3] 은 놀라운 것과 아직 승인 안 된 남은 완료 조건에 대해 한 번만 묻는다. 영향 없는 항목의 판단을 다시 모으지 않는다. 그래서 CONTRACT 「머지하지 않는다」 의 유일한 예외가 된다. 이번 실행에서 지명하거나 확인한 것 외에는 아무것도 머지하지 않는다.
 
-**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for the shared PR evidence,
-remaining-condition approval, checkbox-write and post-merge comment rules.
+시작할 때 읽는다.
+
+- `~/.agents/skills/agent-loop/CONTRACT.md`. 도구 원칙, 상태, 완료 조건 체크박스 규칙, 커밋 경로의 예외.
+- `~/.agents/skills/agent-loop/references/acceptance-criteria.md` 의 「Land: approval is not satisfaction」 과 「Checkbox update」.
 
 | | |
 |---|---|
-| Queue membership | the tickets the human named as arguments, or picked from the `awaiting-review` queue in [1] |
-| State transition | `awaiting-review` → ticket completed by the merge · valve: → `blocked` |
-| Deliverable | merged PRs, issue checkboxes, resolution comments where needed, PR + issue records for accepted remaining conditions, one chat report |
-| Never | merge a ticket the human did not name or confirm this run · resolve an intent collision · `--force` |
+| 큐 | 인자로 지명된 티켓, 또는 [1] 의 `awaiting-review` 목록에서 [3] 에서 고른 것 |
+| 상태 | `awaiting-review` → 머지로 완료. 밸브: → `blocked` |
+| 산출물 | 머지된 PR, 이슈 체크박스, 필요한 해소 코멘트, 승인된 남은 조건의 PR·이슈 기록, 채팅 보고 하나 |
+| Never | 이번 실행에서 지명·확인 안 된 티켓 머지 · 의도 충돌 해소 · `--force` |
 
-This skill is human-fired only, so **the invocation itself is the merge
-signature**: the arguments — or the pick made in [3] — are the human's judgment, and this skill
-only executes it. [3] asks once about surprises and remaining 완료 조건 not already explicitly accepted — never to
-re-collect the judgment for unaffected items. That is what makes `land` the sanctioned exception to CONTRACT's
-"never merge": it merges nothing the human has not named or picked in this very run.
-
-## Progress checklist
-
-Copy this into your response and check items off as you go.
+## 작업 순서
 
 ```
 Drain progress:
-- [ ] 1  Collect queue, PR/worktree, fresh 완료 조건 and the verification record's state
-- [ ] 2  Order the queue
-- [ ] 3  Present plan + remaining conditions; confirm exceptions once for the whole queue
-- [ ] 4  Drain: align → sync → resolve → typecheck → write issue checks → merge → record accepted gaps
-- [ ] 5  Report remaining conditions first, with PR and issue record links
+- [ ] 1  큐, PR·worktree, 새로 읽은 완료 조건, 검증 기록의 상태
+- [ ] 2  큐 순서
+- [ ] 3  계획과 남은 조건 제시. 예외는 큐 전체에 대해 한 번 확인
+- [ ] 4  드레인: 정렬 → sync → 해소 → 타입 체크 → 체크박스 → 머지 → 승인된 빈틈 기록
+- [ ] 5  남은 조건을 앞세워 보고, PR·이슈 기록 링크
 ```
 
-## 1. Collect the queue
+### 1. 큐 모으기
 
-- **With arguments**: the argument tickets are the queue — the human just signed them by typing the
-  command. Verify each sits at `awaiting-review` (`"$TRACKER" show <N>`); any other state is refused
-  with its reason and dropped from the queue: `in-review` = a round is still writing the branch,
-  `blocked` = a decision is pending (route it through `implement <N>` first), `in-progress` = not
-  review-complete.
-- **No arguments**: list the candidates with `"$TRACKER" list awaiting-review` and carry them into
-  [3], where the human picks — that pick is the signature. Nothing is merged that the human does not
-  name there.
-- Resolve each ticket's PR with `"$TRACKER" pr-for <N>`.
-- Read `"$TRACKER" criteria <N>` and the PR body's `## 완료 조건 검증`. Read round comments when
-  present; a review round is not a prerequisite. A changed condition, or an item the record lacks, is
-  미검증, not an inferred pass. Prepare the per-item results for [3] using the shared reference.
-- Pin `REVIEWED_HEAD` from the newest round comment — the sha after `..` in its 반영 compare link
-  (`.../compare/<ROUND_BASE>..<ROUND_HEAD>`). `### 반영 — 커밋 없음` means the round applied nothing, so
-  its `ROUND_BASE` — the sha on the 검증 줄 (`리뷰 기준: Claude <ROUND_BASE>`) — is the reviewed head. No
-  round comment, or a sha that does not resolve in the worktree, leaves `REVIEWED_HEAD` unset.
-- Pin `REPO` and each ticket's worktree. A missing worktree (e.g. eaten by a nested `claude -p`)
-  is recreated with `prepare-worktree.sh <N> <slug>` (no base argument — rework mode).
-- **Verification record.** `bash ~/.agents/skills/verify/scripts/verified-head.sh <PR> <worktree>` —
-  `current <sha>` (exit 0), `stale <sha> <n>` (1) or `missing` (2). Keep the line for [3]; anything but
-  `current` is a surprise there, not a refusal — the human reads «3 커밋 전 증거» and decides, the same
-  judgment they already make about a remaining 미검증 condition. Merge commits alone (a base sync) keep a
-  record current; the script counts them that way.
-- Empty queue → report that and **stop**.
+- **인자 있음**: 인자가 큐다. 사람이 명령을 친 것으로 이미 서명했다. 각 티켓이 `awaiting-review` 인지 트래커에서 본다. 다른 상태는 이유와 함께 거부하고 큐에서 뺀다. `in-review` 는 round 가 아직 브랜치를 쓰는 중, `blocked` 는 결정 대기 (`implement <N>` 으로 먼저), `in-progress` 는 리뷰 준비가 안 됨.
+- **인자 없음**: `awaiting-review` 티켓을 모아 [3] 으로 가져간다. 거기서 사람이 고른 것이 서명이다. 거기서 지명하지 않은 것은 머지하지 않는다.
+- 티켓마다 묶인 PR 을 찾는다.
+- 이슈에서 완료 조건을 **새로** 읽고, PR 본문의 `## 완료 조건 검증` 을 읽는다. round 코멘트가 있으면 읽되 round 는 전제가 아니다. 바뀐 조건, 기록에 없는 항목은 미검증이지 추정 통과가 아니다. 공유 reference 대로 항목별 결과를 [3] 용으로 준비한다.
+- `REVIEWED_HEAD` 를 잡는다. 최신 round 코멘트의 반영 compare 링크 (`.../compare/<ROUND_BASE>..<ROUND_HEAD>`) 에서 `..` 뒤 sha. `### 반영 — 커밋 없음` 이면 그 round 는 아무것도 적용하지 않았으니 검증 줄의 `ROUND_BASE` (`리뷰 기준: Claude <ROUND_BASE>`) 가 리뷰된 head 다. round 코멘트가 없거나 sha 가 worktree 에서 안 풀리면 unset.
+- `REPO` 와 티켓별 worktree 를 잡는다. worktree 가 없으면 (nested `claude -p` 가 먹었을 수 있다) `prepare-worktree.sh <N> <slug>` 로 다시 만든다. base 인자 없이, rework 모드.
+- **검증 기록.** `bash ~/.agents/skills/verify/scripts/verified-head.sh <PR> <worktree>`. `current <sha>` (exit 0), `stale <sha> <n>` (1), `missing` (2). 그 줄을 [3] 까지 들고 간다. `current` 가 아니면 [3] 의 놀라운 것이지 거부가 아니다. 사람이 «3 커밋 전 증거» 를 읽고 정한다. 남은 미검증 조건에 대해 이미 하는 것과 같은 판단이다. 머지 커밋만 있는 것 (base sync) 은 기록을 current 로 둔다. 스크립트가 그렇게 센다.
+- 빈 큐 → 보고하고 **멈춘다.**
 
-## 2. Order the queue
+### 2. 큐 순서
 
-Queue-listing order. Every merge invalidates the remaining queue's bases — that is not a defect
-of the order, it is why [4] re-syncs per item.
+목록 순서대로. 머지할 때마다 남은 큐의 base 가 낡는다. 순서의 결함이 아니라 [4] 가 항목마다 다시 sync 하는 이유다.
 
-## 3. Present the plan — ask only on surprise
+### 3. 계획 제시, 놀라울 때만 묻기
 
-Show a Korean table: 순서 · PR · 이슈 · base · `mergeStateStatus` · 예상 충돌 여부 · 리뷰 후
-head 변동 · 검증 기록(`검증 대상` sha) · 완료 조건(충족/미충족/미검증 counts), plus any refused items with
-their reasons.
-List each remaining condition with its actual result or verification obstacle. Include anticipated
-uncertainty from base sync/conflict resolution so it is visible before the one confirmation.
+한국어 표를 보여 준다. 순서 · PR · 이슈 · base · `mergeStateStatus` · 예상 충돌 · 리뷰 후 head 변동 · 검증 기록 (`검증 대상` sha) · 완료 조건 (충족/미충족/미검증 개수). 거부한 항목은 이유와 함께. 남은 조건은 각각 실제 결과나 검증 장애와 함께. base sync 나 충돌 해소에서 예상되는 불확실성도 한 번의 확인 전에 보이게.
 
-The arguments are already the signature for normal landing. A **surprise** is any of: an argument
-ticket refused in [1] · a predicted conflict · **unreviewed** work on the PR head · a verification record
-that is not `current` · remaining 미충족/미검증 conditions not already explicitly accepted. Without a round,
-use the PR verification record as the baseline; do not manufacture a missing-review blocker.
+인자는 이미 정상 착지의 서명이다. **놀라운 것** 은 이것뿐이다.
 
-**A `stale` or `missing` record joins [3]'s single question, with `verify <N>` named as the fix.** Say
-what it means in one line — a `stale` record's 충족 items describe code from `<n>` commits ago, a `missing`
-one means nothing was verified — and let the answer decide. It is not a separate question and never a
-second one.
+- [1] 에서 거부된 인자 티켓
+- 예상 충돌
+- PR head 의 **리뷰 안 된** 작업
+- `current` 가 아닌 검증 기록
+- 아직 명시적으로 승인 안 된 남은 미충족·미검증 조건
 
-**A review round's own commits are reviewed work, never a surprise.** The round applied the findings,
-ran `comment-cleaner`, typechecked, committed and pushed them itself, and its comment reports every one
-of them — asking the human to review them again asks for a signature they already gave by reading that
-comment. They land with the rest of the queue, silently. The same holds for the base-sync merge the
-round makes before posting. So measure the head against `REVIEWED_HEAD`, not against comment dates:
+round 없이도 PR 의 검증 기록을 기준으로 삼는다. «리뷰 없음» 블로커를 만들어 내지 않는다.
 
-```bash
-git -C <worktree> fetch -p origin
-git -C <worktree> log --oneline --no-merges $REVIEWED_HEAD..origin/<branch>
-```
+- `stale` · `missing` 기록은 [3] 의 하나뿐인 질문에 `verify <N>` 을 해법으로 붙여 들어간다. 뜻을 한 줄로 말한다. `stale` 은 충족 항목이 `<n>` 커밋 전 코드를 설명하고, `missing` 은 아무것도 검증 안 됐다. 별도 질문도, 두 번째 질문도 아니다.
+- **round 자신의 커밋은 리뷰된 작업이지 놀라운 것이 아니다.** round 가 finding 을 적용하고 `comment-cleaner` · 타입 체크 · 커밋 · push 를 직접 했고 코멘트에 전부 보고했다. 그걸 또 리뷰하라는 건 이미 준 서명을 다시 달라는 것이다. round 가 게시 전에 한 base-sync 머지도 같다. 그래서 head 는 코멘트 날짜가 아니라 `REVIEWED_HEAD` 와 잰다.
 
-Empty → the head carries nothing beyond the round; 리뷰 후 head 변동 is 없음. Non-empty → those commits
-are the surprise, and the table names them. A merge commit alone (a base sync someone ran by hand) is
-not a surprise. `REVIEWED_HEAD` unset → fall back to comparing commit and comment dates through
-`gh pr view <PR> --json commits,comments`.
+  ```bash
+  git -C <worktree> fetch -p origin
+  git -C <worktree> log --oneline --no-merges $REVIEWED_HEAD..origin/<branch>
+  ```
 
-- **Argument mode, no surprises**: print the table and proceed without asking.
-- **Argument mode, surprises**: name only the surprising items and ask once whether to include
-  them — the rest of the queue is not re-confirmed. Combine all remaining conditions into this same
-  question ("이 항목들이 남아 있는데도 병합할까요?"). Record which exceptions the answer accepts.
-  Accepting a merge never means accepting a checkbox as 충족.
-- **No-argument mode**: show the same remaining conditions with the queue and ask **which tickets to
-  land despite those listed gaps**. The answer is the merge signature and the informed exception approval.
-  Landing "all of them" is valid only when given, never assumed.
+  비면 round 이후 변동 없음. 안 비면 그 커밋들이 놀라운 것이고 표에 이름을 적는다. 머지 커밋만 있는 것 (손으로 한 base sync) 은 놀라운 것이 아니다. `REVIEWED_HEAD` 가 unset 이면 `gh pr view <PR> --json commits,comments` 로 커밋·코멘트 날짜를 비교한다.
+- **인자 모드, 놀라운 것 없음**: 표를 찍고 묻지 않고 진행.
+- **인자 모드, 놀라운 것 있음**: 그 항목만 이름을 대고 포함할지 한 번 묻는다. 나머지 큐는 다시 확인하지 않는다. 남은 조건 전부를 같은 질문에 합친다 ("이 항목들이 남아 있는데도 병합할까요?"). 답이 어떤 예외를 승인했는지 기록한다. 머지 승인은 체크박스 충족이 아니다.
+- **인자 없음**: 같은 표와 남은 조건을 보이고 **저 빈틈에도 어느 티켓을 land 할지** 묻는다. 그 답이 머지 서명이자 예외 승인이다. "전부" 는 명시됐을 때만 유효하다.
+- **실행당 질문은 여기서 최대 하나.** [3] 뒤에도 의도 충돌 밸브는 `blocked` 로 튕긴다. 승인 범위 밖의 새 남은 조건은 그 항목만 안 머지하고 보고하며 두 번째 질문을 열지 않는다. 검증 누락만으로 밸브를 당기지 않는다. 독립 항목은 계속 간다.
 
-**At most one question per run, here.** After [3], the intent-collision valve still bounces to `blocked`.
-A new remaining condition outside the approved exception scope leaves the item unmerged and is reported
-without a second question; missing verification alone does not invoke the intent-collision valve.
-Continue independent items. The human can decide about that newly reported scope in the next run.
+### 4. 드레인. 항목마다, 순서대로
 
-## 4. Drain — per item, in order
-
-**a. Align.** The worktree holds no unpushed work by loop invariant — hard-align it to the
-remote before anything else:
+**a. 정렬.** worktree 에는 루프 불변으로 안 푸시된 작업이 없다. remote 에 강제 정렬한다.
 
 ```bash
 git -C <worktree> fetch -p origin
 git -C <worktree> reset --hard origin/<branch>
-BASE=$(gh pr view <PR> --json baseRefName -q .baseRefName)   # read fresh: an earlier merge may have moved it
+BASE=$(gh pr view <PR> --json baseRefName -q .baseRefName)   # 새로 읽는다. 앞 머지가 옮겼을 수 있다
 ```
 
-**b. Sync with the base.** `git merge origin/$BASE`, then a plain `git push` — an unpushed
-sync commit leaves the merged remote SHA behind the local HEAD, so what GitHub merges is not
-what the worktree holds.
+**b. base 와 sync.** `git merge origin/$BASE` 뒤 그냥 `git push`. sync 커밋을 안 푸시하면 GitHub 이 머지하는 remote SHA 가 worktree 보다 뒤에 남는다.
 
-**c. Conflicts →** [Resolve] below.
+**c. 충돌** → 아래 「해소」.
 
-**d. Verify.** `pnpm check-types:<app>` must be green **before** the merge, on the synced tree.
-A break caused by the resolution is fixed within union-of-intents bounds; a break that needs
-new behaviour to fix is an intent collision — pull the valve.
+**d. 타입 체크.** sync 된 트리에서 머지 **전에** `pnpm check-types:<app>` 이 초록이어야 한다. 해소가 낸 깨짐은 두 의도의 합집합 안에서 고친다. 새 동작이 있어야 고쳐지는 깨짐은 의도 충돌이다. 밸브를 당긴다.
 
-**e. Synchronize issue checkboxes, then merge.**
+**e. 이슈 체크박스, 그리고 머지.**
 
-Do not rerun the feature checks and do not edit the record. [4b]'s sync adds merge commits only, so a
-record that was `current` in [1] still is; one the human accepted as `stale` stays exactly as stale as it
-was when they accepted it. A conflict resolution from [Resolve] is the one thing that changes code here —
-name the conditions its files touch in the resolution comment, and declare no overlapping file a failure
-by itself.
+- 기능 검사를 다시 돌리지 않고 기록을 고치지 않는다. [4b] 는 머지 커밋만 더하니 [1] 에서 `current` 였던 기록은 여전히 current 다. 사람이 `stale` 로 승인한 것은 승인 시점 그대로 stale 이다. 코드가 바뀌는 건 「해소」 뿐이다. 그 파일이 건드리는 조건을 해소 코멘트에 이름 짓되, 파일이 겹친다고 실패로 단정하지 않는다.
+- 이슈에서 조건을 **다시 읽고** 체크박스를 CONTRACT 「완료 조건」 과 acceptance-criteria 「Checkbox update」 대로 갱신한다. 체크는 **`current` 기록의 증거 있는 충족** 만. 미충족, 미검증, 그리고 `stale` 로 승인된 기록의 모든 항목은 빈칸이다. 그 충족은 옛 코드 얘기고 머지 승인이 통과로 바꾸지 않는다. 바뀐 이슈는 옛 순서로 맞추지 말고 다시 평가한다.
+- 쓰기나 읽어서 확인이 실패하면 이 PR 은 안 머지하고 보고한다. 우회하지 않는다. 명시적으로 승인된 legacy 티켓에 조건이 없으면 그 빈틈을 보고하고 빈 쓰기를 건너뛴다. 체크를 지어내지 않는다. 뒤이은 머지가 실패해도 체크는 사실로 남는다.
+- `gh pr merge <PR> --rebase`. trunk 는 rebase-merge 만 쓴다.
 
-Re-read conditions via `criteria` and build a complete checks file: `checked` is true only for an evidenced
-충족 **on a `current` record**, false for 미충족, 미검증, and every item on a record the human accepted as
-`stale` — that 충족 describes earlier code, and approving the merge never turned it into a pass. A changed
-issue must be reassessed, not blindly mapped by old indices. Immediately before merging:
+**f. 착지 확인** 을 하고 다음으로 간다.
 
-```bash
-"$TRACKER" criteria <N> > <scratchpad>/criteria-<N>.json
-"$TRACKER" check <N> <scratchpad>/criteria-<N>.json <scratchpad>/checks-<N>.json
-```
+- 트래커가 완료를 기록했는지 본다. Linear 는 GitHub 연동이 `Fixes` 줄을 읽어 Done 으로 옮긴다. 안 옮겼으면 직접 닫는다.
+- 남은 조건을 명시적으로 승인받고 머지했으면 공유 reference 가 요구하는 기록을 남긴다. PR 에는 조건·상태·근거·승인을 기술적으로, 이슈에는 짧은 자연스러운 한국어로. 팀원 멘션 없이. 기존 해소 코멘트는 그대로 둔다. 후속 티켓을 자동으로 만들지 않는다. 코멘트 실패는 보고하고 재시도할 누락 기록이지, 다시 할 머지가 아니다.
 
-Read the verified result before merging. Write/read-back failure → leave this PR unmerged and report it;
-do not bypass the adapter. If an explicitly accepted legacy ticket has no conditions, report that gap
-and skip the empty write; never invent checks. Checks remain facts if the following merge fails.
+## 해소. 충돌의 규율
 
-```bash
-gh pr merge <PR> --rebase   # the trunk is rebase-merge only
-```
+여기서 충돌의 양쪽은 모두 **사람이 승인한 코드** 다. 그래서 해소는 판단이 아니라 조립이다. 목표는 두 의도의 합집합.
 
-**f. Confirm the landing** before moving on:
+- **1차 자료부터.** 읽지 않은 의도는 보존할 수 없다. hunk 를 건드리기 전에 양쪽 문서를 읽는다. 이 PR 의 이슈 본문 (`## 목표`) 과 round 코멘트, trunk 쪽도 같이. trunk 의 최근 커밋은 몇 분 전 머지된 큐 항목이고 그 티켓은 트래커에 있다. 두 텍스트 덩어리가 아니라 두 의도 사이에서 해소한다.
+- **`--ours` / `--theirs` 금지.** 통째 선택은 승인된 의도 하나를 조용히 버리고, 그 삭제는 diff 에 안 보인다.
+- **어느 쪽에도 없던 줄을 쓰지 않는다.** 충돌을 없애려고 동작을 지어내는 건 조립이 아니다.
+- **마이그레이션 journal 충돌은 기계적이다.** 이쪽 마이그레이션 번호를 착지한 journal 뒤로 옮긴다. 파일명과 journal 항목 둘 다.
+- **버린 줄은 전부 기록한다.** 해소 코멘트에 들어간다.
+- **해소 완료는 커밋 경로를 우회한다** (CONTRACT 가 딱 이것만 허용). `git commit --no-edit`. `comment-cleaner` 와 `commit` 은 새로 쓴 변경용이고, 해소는 아무것도 새로 쓰지 않는다.
+- **[4d] 통과 뒤 PR 에 해소 코멘트를 단다.** 각 쪽에서 무엇을 엮었고 어떤 줄을 버렸는지, 전부 `path:line` 으로, 한국어로. 안 그러면 그 추론은 이 세션과 함께 죽는다.
 
-```bash
-"$TRACKER" landed <N>   # verifies the tracker recorded completion; closes only if automation missed
-```
+### 밸브. 의도 충돌
 
-If remaining conditions were explicitly accepted and the merge succeeded, post the records required by
-the shared reference: technical condition/status/evidence/approval on the PR and brief natural Korean
-on the issue. Use body files and no teammate mentions:
+두 쪽이 **같은 동작을 양립 불가능하게** 바꿨을 때. 합집합이 없고 어떤 해소도 승인된 의도 하나를 조용히 버린다. 그 선택은 서명의 위임 범위를 넘는다. 사람은 두 PR 이 모순인 줄 모르고 서명했다.
 
-```bash
-gh pr comment <PR> --body-file <scratchpad>/land-remaining-<N>-pr.md
-"$TRACKER" comment <N> <scratchpad>/land-remaining-<N>-issue.md
-```
+- `git -C <worktree> merge --abort`. 트리를 깨끗이 둔다.
+- 루프 상태를 `blocked` 로.
+- PR 에 코멘트. 두 의도와 두 출처.
+- 이 PR 위에 쌓인 큐 항목은 건너뛰고 독립 항목은 계속 간다.
+- 밸브는 질문이 아니라 보고다. 결정은 사람의 다음 지시로 돌아온다.
 
-Keep the existing resolution comment when applicable. Do not auto-create follow-up tickets. A comment
-failure is a missing record to report/retry, not a failed merge to repeat.
+### 5. 보고
 
-## Resolve — the conflict discipline
+- 승인된 머지에 남은 미충족·미검증 조건, 그 이유, PR·이슈 코멘트 링크를 맨 앞에.
+- 실패한 체크박스 쓰기, 빠진 머지 후 기록도 눈에 띄게.
+- 그 다음 드레인 순서로 한 줄씩. 머지됨 / 보류(사유) / 반송(밸브, PR 코멘트 링크). 충돌 항목은 해소 코멘트 링크.
+- 큐의 끝 상태로 닫는다. 남은 것이 있으면 그게 헤드라인이다.
+- worktree 는 그대로 둔다. 이 실행의 세션이 아직 그 위에 열려 있다. 정리는 사람이 세션을 닫은 뒤 별도 `tidy-merged` 의 일이다.
 
-Both sides of every conflict here are **human-approved code**. Resolution is therefore
-assembly, not judgment: the goal is the union of both intents.
+## 끝나기 전 검사
 
-**Primary sources first — you cannot preserve an intent you have not read.** Before touching a
-hunk, read both sides' documentation: this PR's issue body (`## 목표`) and round comments, and
-the same for the trunk side — its recent commits trace to queue items merged minutes ago, whose
-tickets are one `"$TRACKER" show` away. Resolve between two intents, never between two blocks of
-text.
+1. 머지된 PR 은 전부 이번 실행에서 지명되거나 [3] 에서 골라진 것이다.
+2. 머지된 티켓마다 트래커가 완료 상태이고, 체크박스는 `current` 기록의 충족만 켜져 있다.
+3. 해소가 있었던 PR 마다 해소 코멘트가 있다.
+4. 승인된 남은 조건마다 PR 코멘트와 이슈 코멘트가 둘 다 있다.
+5. 밸브로 튕긴 티켓은 `blocked` 이고 PR 코멘트에 두 의도가 있다.
+6. 검증 기록은 어느 PR 에서도 고치지 않았다.
 
-- **Never `--ours` / `--theirs`.** A wholesale pick silently discards an approved intent, and
-  the discard is invisible in the diff.
-- **Never write a line that was on neither side.** Inventing behaviour to make a conflict go
-  away is not assembly.
-- **Migration journal collisions are mechanical**: renumber this side's migration to follow the
-  landed journal, in both filename and journal entry.
-- **Record every dropped line** — it goes in the resolution comment.
-- **Completing a resolution bypasses the commit path** (CONTRACT sanctions exactly this):
-  `git commit --no-edit`. `comment-cleaner` and `commit` are for authored changes; a
-  resolution authors nothing.
-- **Post a resolution comment on the PR** after [4d] passes: what was woven from each side and
-  every dropped line, all as `path:line`, in Korean. The reasoning otherwise dies with this
-  session.
+## 금지 패턴
 
-### The valve — intent collisions
-
-When the two sides change the **same behaviour incompatibly** — no union exists and any
-resolution silently discards one approved intent — the choice exceeds the signature's delegation:
-the human signed both PRs without knowing they contradict.
-
-```bash
-git -C <worktree> merge --abort    # leave the tree clean
-"$TRACKER" transition <N> blocked
-gh pr comment <PR> --body-file <scratchpad>/land-valve-<N>.md   # both intents, both sources
-```
-
-Skip everything queued above this PR, continue with independent items. The valve is a report,
-not a question — the decision comes back as the human's next instruction.
-
-## 5. Report
-
-Lead with any conditions left 미충족/미검증 in approved merges, their reasons, and both PR and issue
-comment links. Include failed checkbox writes or missing post-merge records prominently. Then report
-in drain order — one line per item: 머지됨 / 보류(사유) / 반송(밸브, PR 코멘트 링크). Conflicted items
-link their resolution comment. Close with the queue's end state; a
-non-empty remainder is the headline, not a footnote.
-
-Worktrees are left in place. This run's sessions are still open on them, so cleanup belongs to
-a separate `tidy-merged` after the human closes those sessions — not to the tail of this run.
-
-## Guardrails
-
-In addition to CONTRACT's [Never]:
-
-- **Never merge a ticket the human did not name or confirm in this run** — and never carry a
-  signature over from a previous run: each run collects its own.
-- **Never resolve an intent collision.** The valve is not optional.
-- **Never merge past a non-`current` verification record without [3]'s question**, and never rewrite a
-  record to make it look current — `verify <N>` is its only writer.
-- **Never reorder the queue after presenting the plan** without re-presenting it.
-- **Never silently merge a surprise** — a refused ticket, a predicted conflict, or an unreviewed
-  commit on the head always passes through [3]'s question first. A review round's own commits are
-  reviewed, so they are not that: never hold the queue for them.
-- The only push is [4b]'s sync push, on this item's own branch.
+- 이전 실행의 서명을 이월
+- 의도 충돌을 직접 해소
+- `current` 아닌 기록을 [3] 의 질문 없이 통과
+- current 로 보이게 기록을 고침
+- 계획을 보여 준 뒤 다시 보여 주지 않고 큐 순서 변경
+- 놀라운 것을 조용히 머지
+- round 의 커밋 때문에 큐를 붙잡음
+- [4b] 의 sync push 외의 push
+- 체크박스 쓰기 실패를 우회한 머지
+- 자동 생성한 후속 티켓

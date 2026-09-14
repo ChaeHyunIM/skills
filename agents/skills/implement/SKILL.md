@@ -1,263 +1,154 @@
 ---
 name: implement
-description: Implements a tracker ticket in an isolated git worktree and opens a review-ready PR in Korean, then stops so the human can fire verification and review separately. Handles a fresh start and rework on an existing agent/issue-* branch. Use when the user explicitly invokes `$implement` in Codex or `/implement` in Claude Code. Never verifies 완료 조건 (that is `verify`, fired by the human on the open PR), never reviews and never merges.
+description: "`/implement <N>`. 트래커 티켓 하나를 격리된 worktree 에서 구현해 리뷰 준비된 PR 을 열고 멈춘다. 검증·리뷰·머지는 하지 않는다."
+disable-model-invocation: true
 ---
 
 # implement
 
-Implement one ticket in an isolated worktree, open a **review-ready PR**, and stop at
-`awaiting-review`. Verification (`verify <N>`) and review (`review-round <N>`) are fired separately by the
-human on that PR — this skill does neither.
+티켓 하나를 격리된 worktree 에서 구현하고, 리뷰 준비된 PR 을 열고, `awaiting-review` 에서 멈춘다. 검증(`verify <N>`)과 리뷰(`review-round <N>`)는 사람이 그 PR 에 대해 따로 부른다. 이 스킬은 둘 다 하지 않는다.
 
-**Read `~/.agents/skills/agent-loop/CONTRACT.md` before starting** — states, the tracker adapter,
-worktrees and the output convention live there and are not repeated here. Resolve `$TRACKER` per
-CONTRACT's [Tracker adapter] before the first tracker call.
+시작할 때 읽는다.
 
-**Read `~/.agents/skills/agent-loop/references/acceptance-criteria.md`** for 완료 조건 authoring,
-verification, PR evidence and land-only issue checkboxes.
+- `~/.agents/skills/agent-loop/CONTRACT.md`. 도구 원칙, 상태, 엣지, worktree, 커밋 경로.
+- `~/.agents/skills/agent-loop/references/acceptance-criteria.md` 의 「Write the outcome, not the patch」 와 「Verify and keep one current PR record」.
 
 | | |
 |---|---|
-| State transition | `ready` → `in-progress` → `awaiting-review` |
-| Deliverable | one non-draft PR whose `## 완료 조건 검증` section is the placeholder `verify` fills |
-| Never | verify 완료 조건 · review · merge · push to the base branch |
+| 상태 | `ready` → `in-progress` → `awaiting-review`. 막히면 `blocked` |
+| 산출물 | non-draft PR 하나. `## 완료 조건 검증` 은 `verify` 가 채울 자리만 있다 |
+| Never | 완료 조건 검증 · 리뷰 · 머지 · base 브랜치에 push |
 
-## Entry modes
+## 부르는 방식
 
-- **`implement <N>`** → run [Execution] directly.
-- **`implement` (no argument)** → run [Discover & propose] first, then **ask the user and stop**.
-  Change nothing before the user confirms — no labels, no worktree.
+- `implement <N>`: 바로 「작업 순서」.
+- `implement` (인자 없음): 「후보 고르기」 를 하고 사용자에게 묻고 멈춘다. 확인 전에는 아무것도 바꾸지 않는다. 라벨도, worktree 도.
+- `--base <branch>` 로 base 를 지정할 수 있다. 그 외 인자는 이번 턴의 추가 지시다.
 
-## Progress checklist
+## 후보 고르기 (인자 없음)
 
-Copy this into your response and check items off as you go.
+- 트래커에서 `ready` 티켓을 모은다. 되돌아온 `blocked`, 진행 중인 `in-progress` · `awaiting-review` 도 같이 보여 준다.
+- 후보마다 블로커의 실제 상태를 [2] 방식으로 본다. 보여 주는 것은 번호와 제목, 목표 요약, `apps/` 아래 어느 앱인지, 블로커 상태, 구현 계획 한 줄.
+- 블로커가 열린 후보는 «아직 못 시작» 으로 표시하고 추천에서 뺀다. 목록에서 지우지는 않는다. 블로커가 land 되면 몇 분 뒤 시작할 수 있다.
+- 의존이나 우선순위가 보이면 추천 하나를 표시한다.
+- 후보가 없으면 그렇다고 보고하고 멈춘다.
+- "어느 이슈를, 어느 방향으로?" 를 묻고 멈춘다. 확인되면 그 `<N>` 으로 「작업 순서」.
+
+## 작업 순서
+
+진행 체크리스트를 응답에 복사해 두고 지우며 간다.
 
 ```
 Implementation progress:
-- [ ] 1  Load ticket and 완료 조건, confirm each is verifiable, detect fresh vs rework
-- [ ] 2  Blocker gate (fresh only)
-- [ ] 3  Claim the state
-- [ ] 4  Resolve the base
-- [ ] 5  Prepare the worktree
-- [ ] 6  Implement (fetch the Figma node first if the issue has a design)
-- [ ] 7  Typecheck; run the tests this change added or touched
-- [ ] 8  comment-cleaner → commit → check base both ways → push → PR with the verification placeholder
-- [ ] 9  Land the state, point at `verify <N>`, stop
+- [ ] 1  티켓과 완료 조건 읽기, fresh / rework 판별
+- [ ] 2  블로커 게이트 (fresh 만)
+- [ ] 3  상태 잡기
+- [ ] 4  base 정하기 (fresh 만)
+- [ ] 5  worktree 준비
+- [ ] 6  구현 (디자인이 있으면 Figma 노드 먼저)
+- [ ] 7  타입 체크, 이 변경이 만들거나 건드린 테스트
+- [ ] 8  comment-cleaner → commit → base 양방향 확인 → push → PR
+- [ ] 9  상태 내리고 verify <N> 을 가리키고 멈춤
 ```
 
-## Discover & propose (no-argument mode)
+### 1. 티켓 읽기, 모드 판별
 
-1. Collect candidates, and separately the subset the tracker considers startable:
-   ```bash
-   "$TRACKER" list ready
-   "$TRACKER" list-startable
-   ```
-   Also surface resumable ones: `"$TRACKER" list blocked` (bounced back), `list awaiting-review` /
-   `list in-progress` (in flight).
+- 트래커에서 티켓 N 의 본문과 `## 완료 조건` 을 읽는다.
+- `git branch --list "agent/issue-<N>-*"`. 없으면 **fresh**, 있으면 **rework**. rework 는 그 브랜치에서 이어 가며 이번 턴의 지시를 적용한다.
+- 완료 조건을 `verify` 가 볼 방식으로 읽는다. `~/.agents/skills/verify/references/routes.md` 의 경로 하나로 확인할 관찰 결과가 있는가. 빠졌거나 모호하면 코딩이나 `in-progress` 전에 「막혔을 때」 로 간다.
+- 조건 진행은 세션에만 둔다. 이슈 체크박스에 쓰지 않는다.
 
-   `list-startable` reads only the native edges, never the body prose, so a ticket missing an edge shows
-   up as startable when it is not. Treat that list as an ordering hint, not a verdict — [3] checks for real.
-2. No candidates → report that and **stop**.
-3. For each candidate, check its blockers' real state as in [2] and present briefly: number and title,
-   a summary of the body (the goal), which app under `apps/` it targets, blocker status, and a
-   one-line implementation plan. Candidates with an open blocker are listed as **not fireable yet** and
-   excluded from the recommendation — list them, never drop them: they become fireable minutes after
-   their blocker is signed and landed.
-   If dependencies or priority are visible, mark **one recommendation**.
-4. **Ask "which issue, and in what direction?" and wait. Stop here.**
-5. Once confirmed, run [Execution] for that `<N>`.
+### 2. 블로커 게이트 (fresh 만)
 
-## 1. Load the ticket, detect the mode
+- 블로커는 네이티브 blocked-by 엣지에서 읽는다. 옛 티켓 본문의 블로커 목록은 낡은 산문이지 입력이 아니다.
+- 블로커마다 **실제 상태** 를 본다. 열림/닫힘과 그 PR 의 머지 여부. 루프 상태 라벨은 사람이 손대서 뒤처지니 근거로 쓰지 않는다.
+- 전부 닫혔고 PR 이 머지됐다 → 진행.
+- 하나라도 열려 있다 → [3] 전에 멈춘다. 어느 블로커가 열렸는지 보고하고 아무것도 바꾸지 않는다. 블로커가 `awaiting-review` 이고 사람이 만족한다면 `land <blocker>` 뒤 `implement <N>` 재실행이 몇 분짜리 빠른 길이다.
+- 블로커 작업이 없는 base 에서 타입 체크가 초록이어도 아무것도 증명하지 않는다 (evidence.md).
+
+### 3. 상태 잡기
+
+루프 상태를 `in-progress` 로 바꾼다. 이전 표식을 지우고 하나만 남긴다 (CONTRACT 「상태」). fresh 와 rework 가 같다.
+
+### 4. base 정하기 (fresh 만)
+
+- base 는 **사용자가 지금 작업 중인 브랜치** 다. 고정 이름이 아니다. 기능 라인(v2.2.0 같은)의 이슈는 서로 쌓이므로 `main` 에서 따면 앞 이슈 작업이 빠진 트리에서 시작한다.
+- 순서: `--base <branch>` 인자 → 메인 체크아웃의 현재 브랜치 (`git rev-parse --abbrev-ref HEAD`).
+- **로컬** 브랜치를 쓴다. `origin/<branch>` 가 아니다. 사용자의 안 푸시된 커밋이 보통 이 이슈의 전제다.
+- 멈추고 묻는 경우: HEAD 가 detached 다. base 가 `agent/issue-*` 브랜치다 (에이전트 브랜치 위에 에이전트 브랜치를 쌓지 않는다. 블로커가 land 되길 기다린다).
+- 경고만 하는 경우: 메인 체크아웃에 커밋 안 된 변경이 있다. worktree 는 HEAD 커밋에서 갈라지니 그 변경은 따라오지 않는다.
+- 정한 base 를 [8] 까지 들고 가 PR 본문에 적는다.
+
+### 5. worktree 준비
 
 ```bash
-"$TRACKER" show <N>
-"$TRACKER" criteria <N>
-git branch --list "agent/issue-<N>-*"
+bash ~/.agents/skills/implement/scripts/prepare-worktree.sh <N> <slug> [<base>]   # rework 는 base 생략
 ```
 
-No branch → **fresh start**. Branch exists → **rework** (continue on it, applying this turn's extra
-instructions). Read each condition once the way `verify` will: is there an observable result one of its
-routes (`~/.agents/skills/verify/references/routes.md`) can check? Missing or ambiguous conditions
-go through [When stuck] before coding or claiming `in-progress`; its `blocked` transition is the explicit
-exception to the normal claim sequence. Keep condition progress in the session, not in issue checkboxes.
+`slug` 는 티켓 제목의 kebab-case. 스크립트가 worktree 생성, `pnpm install`, routeTree 복사를 한다.
 
-## 2. Blocker gate (fresh only)
+### 6. 구현
 
-Read the ticket's blockers from the native edges — the only record of them (CONTRACT's [Blocking edges]);
-a blocker list in an older ticket's body is stale prose, not an input. Then check each blocker's **actual
-state — never its loop state**. Loop states are human-edited and lag. The truth is the ticket's open/closed
-plus its PR:
+- 이슈 본문이 목표다. 별도 목표 명령은 없다.
+- 이슈에 Figma 노드 링크가 있으면 **UI 코드를 쓰기 전에** Figma MCP 로 노드를 가져온다. 배치와 스타일은 노드를 따른다. 노드의 동작이 승인된 정책이나 완료 조건과 충돌하면 조용히 한쪽을 고르지 말고 「막혔을 때」. 이슈의 "Figma가 답하지 않는 것" 은 노드가 안 보여 주는 것만 다룬다. Figma MCP 가 없거나 노드를 못 가져오면 산문으로 UI 를 지어내지 말고 「막혔을 때」.
+- 프로젝트 지침(`AGENTS.md`, `CLAUDE.md`)을 따른다.
+- 조건의 자연스러운 증명이 테스트인 곳(도메인·서버 동작, 순수 함수)은 테스트를 쓴다. `verify` 가 증거로 재사용한다. 스크린샷이나 기기 실행은 여기서 하지 않는다. 그건 `verify` 의 일이고, 이 세션에 남은 컨텍스트로는 못 한다.
 
-```bash
-"$TRACKER" blockers <N>                # [{number,state}] — the blockers
-"$TRACKER" show <blocker>              # .state — open or closed
-"$TRACKER" pr-for <blocker> --merged
-```
+### 7. 타입 체크와 테스트
 
-A green typecheck against a base that lacks the blocker's work proves nothing (see evidence.md).
+- `pnpm check-types:<app>` 이 통과할 때까지 고친다. `tsc` 를 직접 부르지 않는다.
+- 이 변경이 만들거나 건드린 테스트를 `pnpm test <path>` 로 돌리고 고친다.
+- **이 단계는 완료 조건 검증이 아니다.** 여기서 검증하게 했을 때 건너뛰어졌다. 세션 예산을 티켓과 코드에 다 쓴 뒤라 가장 비싼 경로가 가장 컨텍스트 없는 지점에 앉았고, 전부 미검증에 지어낸 이유가 붙어 돌아왔다 (evidence.md, PR #375). 초록 타입 체크는 게이트지 어떤 조건의 증거도 아니다.
 
-- **Every blocker closed with its PR merged** → proceed.
-- **Any blocker still open** → **stop before [3]**. Report which blockers are open and change nothing
-  (no state writes, no worktree). If a blocker sits at `awaiting-review` and the human is satisfied with
-  it, the fast path is minutes long: invoke `land <blocker>` (the arguments are the merge signature),
-  then re-run `implement <N>`.
+### 8. 커밋과 PR
 
-## 3. Claim the state (immediately)
+- CONTRACT 의 커밋 경로. `comment-cleaner` (인자 없이) → `commit` → push.
+- push 전에 base 를 **양방향** 으로 본다.
+  - base 가 remote 보다 앞서 있나. `git rev-list --count origin/<base>..<base>` 가 0 이 아니면 멈추고 사용자에게 base 를 먼저 push 하라고 한다. GitHub 은 remote base 와 diff 하니 안 푸시된 base 커밋이 이 PR 에 섞인다. 남의 작업 브랜치를 대신 push 하는 건 이 스킬의 일이 아니다.
+  - base 가 그새 움직였나. `git fetch origin` 뒤 `git merge-base --is-ancestor origin/<base> HEAD`. 움직였으면 push 전에 `git merge origin/<base>` 하고 [7] 을 다시 돈다.
+- `git push -u origin agent/issue-<N>-<slug>`.
+- PR 본문 파일을 먼저 만든다. 트래커 바인딩 줄(CONTRACT 「트래커에서의 표현」: Linear `Fixes YOU-nn`, GitHub `Closes #nn`), base, 구현 설명, 그리고 맨 끝에 검증 자리. `## 완료 조건 검증` 제목은 정확히 하나다.
 
-```bash
-"$TRACKER" transition <N> in-progress
-```
+  ```markdown
+  ## 완료 조건 검증
 
-`transition` clears every other loop state first, so this one line covers both fresh and rework.
+  검증 미실행 — `verify <N>` 이 이 섹션을 채운다. 타입 체크·테스트 통과는 완료 조건의 근거가 아니다.
+  ```
 
-## 4. Resolve the base (fresh only)
+  그 아래 조건별 줄을 쓰지 않는다. 미검증 줄도. `검증 대상` sha 가 없는 섹션이 `land` 에게 «검증 안 됨» 이고, 지금은 그게 사실이다.
+- `gh pr create --base <base> --title "<제목>" --body-file <file>`. non-draft. 게시된 본문을 다시 읽어 확인한다. PR 은 구현이 끝난 여기서 연다. 진행 공유용으로 먼저 열지 않는다.
+- **rework**: push 하고, 기존 PR 본문을 다시 읽고, 구현 요약만 고쳐 `gh pr edit <PR> --body-file`. `## 완료 조건 검증` 은 손대지 않는다. push 가 head 를 옮겨 기록이 stale 이 됐고, `land` 가 새 `verify <N>` 을 물을 것이다. 손으로 고치면 그 사실을 숨긴다. 바인딩 줄과 사람이 쓴 내용은 보존한다. draft 로 되돌리지 않는다.
 
-The base is **whatever branch the user is working on**, not a fixed name. Issues in a feature line (e.g.
-v2.2.0) build on each other, so branching off `main` would start from a tree missing the previous issue's
-work.
+### 9. 상태 내리고 멈춤
 
-Resolution order: an explicit `--base <branch>` argument → the current branch.
+- 루프 상태를 `awaiting-review` 로.
+- PR 링크와 다음 수를 한 줄씩 말하고 **멈춘다.**
+  - `verify <N>`: 이 head 의 증거로 검증 섹션을 채운다. 없으면 `land` 가 검증 없이 머지할지 묻는다.
+  - `review-round <N>`: 리뷰 라운드. `verify` 가 먼저일 필요는 없다. UI 가 많은 티켓은 스크린샷이 먼저 있으면 읽기 좋다.
+  - `implement <N>` 에 지시를 붙여서: 더 수정.
 
-```bash
-git rev-parse --abbrev-ref HEAD      # in the main checkout
-```
+## 막혔을 때
 
-Use the **local** branch, not `origin/<branch>` — the user's unpushed commits are usually exactly the
-prerequisite this issue builds on.
+- 요구가 모호하거나, 타입이 안 풀리거나, 환경 문제로 못 나갈 때다. 검증 장애물은 아니다. 그건 `verify` 가 자기 실행에서 기록한다.
+- 루프 상태를 `blocked` 로 바꾸고, 티켓에 코멘트를 단다. 막힌 지점과 필요한 결정.
+- 사람에게 넘기고 멈춘다.
 
-Stop and ask when:
+## 끝나기 전 검사
 
-- HEAD is detached (the command returns `HEAD`),
-- the resolved base is an `agent/issue-*` branch — the loop never builds one agent branch on top of
-  another. Wait for the blocker to land instead.
+1. 티켓의 루프 상태 표식이 `awaiting-review` 하나다.
+2. PR 이 non-draft 이고, base 가 [4] 에서 정한 브랜치이고, 본문에 바인딩 줄이 있다.
+3. `## 완료 조건 검증` 이 정확히 하나이고 자리표시 문구뿐이다.
+4. 브랜치 head 가 origin 과 같다. 로컬에만 있는 커밋이 없다.
+5. base 브랜치는 건드리지 않았다.
 
-Warn but do not stop when the main checkout has uncommitted changes: the worktree branches from the HEAD
-commit, so those changes will not come along.
+## 금지 패턴
 
-Carry the resolved base through to [8] and record it in the PR body.
-
-## 5. Prepare the worktree
-
-```bash
-bash ~/.agents/skills/implement/scripts/prepare-worktree.sh <N> <slug> [<base>]   # omit base for rework
-```
-
-`slug` is the kebab-case issue title. The script handles worktree creation, `pnpm install` and the
-routeTree copy.
-
-## 6. Implement
-
-- **The issue body is the goal.** There is no separate goal command.
-- **Design-backed UI**: if the issue has a design section with Figma node links, fetch the node
-  through the Figma MCP — its design-context tool, plus its screenshot tool for visuals — **before
-  writing any UI code**. Use the connected Figma MCP's actual tools; never guess at tool names. The
-  node is the source for layout and styling. If its behaviour conflicts with approved policy or
-  완료 조건, use [When stuck] rather than silently picking a winner. The issue's "Figma가 답하지 않는 것"
-  list covers only what the node does not show. If no Figma MCP
-  is connected or the node cannot be fetched, treat it as stuck ([When stuck]) rather than
-  improvising the UI from the issue prose.
-- Follow the active project instructions (`AGENTS.md`, `CLAUDE.md`, or the host equivalent).
-- Write tests where they are the natural proof of a condition (domain/server behaviour, pure functions);
-  `verify` reuses them as evidence. Do not stage screenshots or device runs here — that is `verify`'s
-  work, and it needs a context this session no longer has.
-
-## 7. Typecheck and the tests this change owns
-
-Fix and repeat until `pnpm check-types:<app>` passes. Never call `tsc` directly. Then run the tests the
-change added or touched through the project runner (`pnpm test <path>`) and fix what they show.
-
-**This step does not verify 완료 조건.** That is `verify`'s run, fired by the human on the open PR
-(`verify <N>`) in a fresh context — with the environment check, the simulator, the base worktree and the
-evidence gates it needs. It used to be called from here, and that is exactly where it got skipped: by this
-point the session has spent its budget on the ticket and the code, so the most expensive route sat at the
-point of least context and came back all 미검증 with a guessed reason (agent-loop `references/evidence.md`,
-PR #375). A green typecheck or test run is a gate, not evidence for any condition.
-
-## 8. Commit and PR
-
-Follow CONTRACT's commit path: `comment-cleaner` (no argument) → `commit` → push.
-
-Before pushing, verify the base in **both directions**.
-
-**Is the base ahead of its remote?** GitHub diffs the PR against the *remote* base, so if `origin/<base>`
-is missing or the count is non-zero, the user's unpushed base commits appear inside this PR's diff:
-
-```bash
-git rev-list --count origin/<base>..<base>
-```
-
-Non-zero → stop and ask the user to push the base first. Pushing someone else's working branch is not
-this skill's call.
-
-**Did the base move while you were implementing?** The user may have kept committing to it:
-
-```bash
-git fetch origin
-git merge-base --is-ancestor origin/<base> HEAD || echo "base moved — needs catching up"
-```
-
-If it moved, catch up with `git merge origin/<base>` **before pushing**, then **re-run the typecheck
-gate and the tests from [7]**.
-
-```bash
-git push -u origin agent/issue-<N>-<slug>
-LINK=$("$TRACKER" link-line <N>)   # the line that binds PR → ticket; never hand-write it
-gh pr create --base <base> --title "<제목>" --body-file <scratchpad>/pr-<N>.md
-```
-
-Create the body file before `gh pr create`: preserve the adapter-produced `LINK`, record the base, explain
-the implementation, and end with the verification placeholder — exactly one `## 완료 조건 검증` heading,
-which `verify` later takes over in place:
-
-```markdown
-## 완료 조건 검증
-
-검증 미실행 — `verify <N>` 이 이 섹션을 채운다. 타입 체크·테스트 통과는 완료 조건의 근거가 아니다.
-```
-
-Write no per-condition lines under it, not even 미검증 ones: a section without a `검증 대상` sha is what
-`land` reads as "not verified", and that is the truth at this point. Read the published body back. The PR
-still opens here, after implementation, always non-draft — never earlier for progress tracking.
-
-**Rework**: push, re-read the existing PR body, update its implementation summary, and use
-`gh pr edit <PR> --body-file <file>`. Leave `## 완료 조건 검증` alone — the push moved the head, so the
-record's `검증 대상` no longer matches it and `land` will ask for a new `verify <N>` run; rewriting the
-section by hand would only hide that. Preserve its binding and human-authored content. Do not flip it
-back to draft — `in-progress` already says the code is moving.
-
-## 9. Land the state and stop
-
-```bash
-"$TRACKER" transition <N> awaiting-review
-```
-
-Report the PR link and **stop**, with the next moves one line each:
-
-- `verify <N>` — fills `## 완료 조건 검증` with evidence on this head; without it `land` asks whether to
-  merge unverified
-- `review-round <N>` — a review round; it does not need `verify` first, though UI-heavy tickets read
-  better with the screenshots already there
-- `implement <N>` with instructions — more changes
-
-## When stuck
-
-This path is for work that cannot proceed, especially missing or ambiguous requirements. A verification
-obstacle is not one — `verify` records those on its own run.
-
-If you cannot proceed on your own (ambiguous requirements, unresolved types, environment issues):
-
-```bash
-"$TRACKER" transition <N> blocked
-"$TRACKER" comment <N> <막힌 지점과 필요한 결정을 적은 파일>
-```
-
-Stop and hand off to the human.
-
-## Guardrails
-
-In addition to CONTRACT's [Never]:
-
-- This skill is the sanctioned exception for push + PR, but **only up to opening the PR**.
-- The base is dynamic — the user's current branch unless `--base` says otherwise. Never assume `main`.
-- **Never write a verification result** — no 충족/미충족/미검증 lines, no `검증 대상`. The placeholder in
-  [8] is the whole section; `verify` is its only writer (CONTRACT [Never]).
+- 인자 없는 모드에서 확인 전에 바꾼 라벨·worktree
+- 블로커가 열린 티켓 시작
+- `main` 을 base 로 가정
+- 에이전트 브랜치 위에 에이전트 브랜치
+- 검증 결과 줄 (충족 · 미충족 · 미검증, `검증 대상`)
+- 이슈 체크박스 수정
+- 진행 공유용 조기 PR, draft PR
+- 사용자 대신 base push
+- 검증 장애물로 `blocked`

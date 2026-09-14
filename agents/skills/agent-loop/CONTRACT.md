@@ -1,42 +1,30 @@
-# agent-loop shared contract
+# agent-loop 공유 규약
 
-The contract shared by `to-tickets`, `implement`, `verify`, `review-round` and `land`. All five read this
-file at the start of a run. The **evidence** behind these rules — measurements, incidents — is not here; it lives in
-`references/evidence.md` and is read only when a rule is in doubt.
+`to-tickets` · `implement` · `verify` · `review-round` · `land` 다섯 스킬이 공유하는 규칙. 각 스킬은 시작할 때 이 파일을 읽는다.
 
-## Contents
+이 문서는 «끝났을 때 참이어야 하는 것» 을 적는다. 그것을 어떤 도구로 이루는지는 스킬이 그 자리에서 고른다. 규칙이 왜 있는지는 `references/evidence.md` 에 사고·측정 기록으로 있다. 규칙이 의심스러울 때만 연다. 다시 조사하지 않는다.
 
-- [Vocabulary](#vocabulary)
-- [Loop map](#loop-map)
-- [Tracker adapter](#tracker-adapter)
-- [State machine](#state-machine)
-- [Blocking edges](#blocking-edges)
-- [Worktree convention](#worktree-convention)
-- [Output convention](#output-convention)
-- [Never](#never)
+## 도구
 
-## Vocabulary
+- 트래커(Linear·GitHub Issues), GitHub PR, 검증 도구는 세션에 붙어 있는 plugin · MCP · CLI 로 다룬다. 도구 이름을 추측하지 않고 실제로 있는 것을 쓴다.
+- 필요한 도구가 없으면 무엇을 붙여야 하는지 말하고 멈춘다. 대신할 방법을 만들지 않는다. API 를 직접 치지 않고, 라벨 대신 본문에 상태를 적지 않고, 못 한 일을 한 것으로 치지 않는다.
+- 프로젝트가 어느 트래커·팀을 쓰는지는 `<repo>/.claude/agent-loop/config` 에 있다 (`TRACKER=linear`, `LINEAR_TEAM_KEY=YOU`). 없으면 사용자에게 묻는다.
+- 스크립트는 모델이 손으로 하면 틀리는 일에만 남아 있다. sha 대조(`verify/scripts/verified-head.sh`), 리뷰 엔진 실행과 findings 추출(`review-round/scripts/`), 워크트리 준비(`implement/scripts/prepare-worktree.sh`). 그 외에는 도구를 직접 쓴다.
 
-One name per thing. The four skills use only this vocabulary.
+## 어휘
 
-| Term | Meaning |
+이름은 하나씩. 다섯 스킬은 이 어휘만 쓴다.
+
+| 용어 | 뜻 |
 |---|---|
-| **tracker** | The platform holding the loop's tickets (GitHub Issues, Linear, …), reached only through the adapter |
-| **base** | The branch this PR directly targets (`gh pr view --json baseRefName`). Never assumed |
-| **blocker** | Another ticket registered as a native blocked-by edge on this ticket (`blockers <id>`) |
-| **finding** | One item produced by the configured code-review skill |
-| **round** | One run of the configured review-round skill |
-| **완료 조건** | Observable outcomes promised by the issue; `Acceptance criteria` and `검수 기준` are legacy headings only |
+| **tracker** | 루프의 티켓이 사는 곳. Linear 또는 GitHub Issues |
+| **base** | 이 PR 이 직접 겨누는 브랜치. `gh pr view --json baseRefName`. 짐작하지 않는다 |
+| **blocker** | 이 티켓에 네이티브 blocked-by 엣지로 걸린 다른 티켓 |
+| **finding** | 코드 리뷰 스킬이 낸 항목 하나 |
+| **round** | review-round 한 번 실행 |
+| **완료 조건** | 이슈가 약속한 관찰 가능한 결과. `Acceptance criteria`·`검수 기준` 은 옛 제목으로 읽기만 한다 |
 
-The issue owns the conditions; the PR body owns current verification evidence, and **`verify` is its only
-writer**. That evidence is a property of a commit, not a loop state: its `검증 대상` sha names the code it
-describes, and the record is current only while the PR head is that sha or differs from it by merge commits
-alone (`references/acceptance-criteria.md`; `verify/scripts/verified-head.sh` is the check).
-Only `land` updates existing issue checkboxes, immediately before merge.
-A check means verified satisfaction; human merge approval does not turn remaining conditions into passes.
-Read `references/acceptance-criteria.md` at the relevant skill checkpoint for the shared rules.
-
-## Loop map
+## 루프 지도
 
 ```
     to-tickets             implement <N>              verify <N>  ·  review-round <N>                 human
@@ -45,189 +33,89 @@ Read `references/acceptance-criteria.md` at the relevant skill checkpoint for th
                         → awaiting-review                                    or blocked           asks about a stale record
 ```
 
-`verify` and `review-round` are both human-fired on the open PR, in either order and as often as needed;
-neither is a prerequisite of the other, and neither is mandatory. `land` reads the verification record's
-state and asks about it once — a merge over evidence that does not describe the head is the human's call,
-made knowing that.
+- `verify` 와 `review-round` 는 사람이 열린 PR 에 대해 부른다. 순서는 없고 횟수 제한도 없고 둘 다 필수도 아니다.
+- 머지 판단은 사람이 `land` 를 부르고 티켓을 지명하는 행위 그 자체다. 미리 붙이는 «머지 가능» 표식은 없다. 같은 판단을 두 번 기록하면 표식 쪽이 썩었다.
+- `land` 는 지명된 PR 이 서명자가 알 수 없던 방향으로 달라졌을 때만 한 번 더 묻는다. 거부된 티켓, 예상 충돌, 리뷰 뒤 움직인 head, head 를 설명하지 않는 검증 기록, 남은 미충족·미검증 조건.
 
-The merge judgment always terminates at the human — and the human expresses it by **invoking `land`
-and naming (or picking) the tickets to merge**. `land` is human-fired only, so its arguments — or
-its queue pick — *are* the merge signature; it asks one further question only when a PR diverged
-from what the signer could have known (a refused ticket, a predicted conflict, a head that moved
-after review, a verification record that no longer describes the head, or remaining 미충족/미검증
-conditions). There is no signature state to attach beforehand — recording the same judgment twice
-(a marker, then the command) was duplication, and the marker was the copy that went stale.
+## 상태
 
-## Tracker adapter
-
-The loop's concepts (states, edges, tickets) are platform-neutral; **how they are represented is the
-adapter's business alone**. Skills never call the platform CLI/API for ticket state directly — they run
-adapter verbs. PR-side operations (`gh pr view/comment/merge`) are **not** tracker verbs: PRs, review
-rounds and the merge queue live on GitHub regardless of which tracker a project uses.
-
-Every skill resolves the adapter once at start:
-
-```bash
-ROOT=$(git rev-parse --show-toplevel)
-TRACKER="$ROOT/.claude/agent-loop/tracker.sh"                       # 1. project's own script
-if [ ! -x "$TRACKER" ]; then
-  NAME=$(sed -n 's/^TRACKER=//p' "$ROOT/.claude/agent-loop/config" 2>/dev/null)
-  TRACKER=~/.agents/skills/agent-loop/adapters/${NAME:-github}/tracker.sh   # 2. named / 3. github
-fi
-```
-
-Adapters live side by side in `adapters/<name>/tracker.sh`, all generic — anything project-specific
-(team key, status names, credentials) comes from the repo's `.claude/agent-loop/config` and
-`.env.local`, which the adapter reads itself. A project therefore switches tracker by committing one
-`TRACKER=<name>` line; shipping a full `tracker.sh` is the escape hatch for a platform no shared
-adapter covers. Adapter output is JSON on stdout unless a verb says otherwise.
-
-| Verb | Contract |
-|---|---|
-| `list <state>` | open tickets in one loop state: `[{number,title,body,updatedAt}]` |
-| `list-startable` | `ready` tickets with no open native blocker: `[numbers]`. **Ordering hint only** — the listing index lags writes; `implement`'s blocker gate reads `blockers <id>` per ticket and is the verdict |
-| `show <id>` | `{number,title,body,state,labels,url,updatedAt}` — `state` is the platform's open/closed |
-| `criteria <id>` | Read `{issue,updatedAt,bodyHash,section,items:[{index,text,checked}]}` through the shared parser |
-| `check <id> <snapshot-file> <checks-file>` | Land-only, full batch checkbox update against the read snapshot; compare text/version and verify preserved body. See `references/acceptance-criteria.md` |
-| `blockers <id>` | native dependency edges with their open/closed state: `[{number,state}]` |
-| `add-edge <id> <blocker>` | register a native blocked-by edge |
-| `transition <id> <state>` | clear **every** loop state marker, then set `<state>` — a ticket is in exactly one state |
-| `comment <id> <body-file>` | post a ticket comment |
-| `pr-for <id> [--merged]` | the PR bound to this ticket: `[{number,url,headRefName,baseRefName}]`. Handles search-index lag and false full-text matches internally |
-| `link-line <id>` | prints the text a PR body must carry to bind PR → ticket (GitHub: `Closes #<id>`) |
-| `planning-context` | writable native ticket properties and current planning evidence: `{"properties":[{key,label,kind,semantics,values?,format?,default?,context?}]}`. Returns an empty array when the adapter has none |
-| `create <title> <body-file> [<properties-json>]` | create a ticket in `ready` state with the approved native properties, print its reference. Reads `TRACKER_PARENT=<id>` from the environment and registers it as the **native** parent relation; an adapter that cannot must refuse, never create an orphan |
-| `landed <id>` | after the merge: verify the tracker recorded completion; close it only if the platform's own automation missed |
-
-The native parent relation is the **only** record of a ticket's parent — ticket bodies carry no `## Parent`
-section, so a `create` that silently drops `TRACKER_PARENT` leaves the ticket unreachable from the issue it
-came from (YOU-67, 2026-08-28). `to-tickets` sets the variable whenever the run came from a parent ticket.
-
-`properties-json` is an optional JSON object whose keys and validation rules come from the same adapter's
-`planning-context`. The adapter validates the entire object before creating anything and rejects malformed,
-unsupported or stale values instead of silently dropping them. Omitting it is equivalent to `{}`, which keeps
-existing callers compatible. Property names, platform ids and planning metrics never enter ticket prose merely
-to duplicate a native field.
-
-Properties that `to-tickets` can recommend use this normalized vocabulary:
-
-| `semantics` | `kind` | Required normalized data |
+| 상태 | 뜻 | 쓰는 스킬 |
 |---|---|---|
-| `relative-size` | `enum` | numeric `values:[{value,label}]`, ordered from smaller to larger |
-| `delivery-window` | `enum` | `values:[{value,label,state,startsAt,endsAt,scope,scopeTruncated}]`, where `state` is `active` or `upcoming`; `context:{unit,unestimatedWeight,recentThroughput:{cycles,average}}`, where `unit` is `issues` or `points` |
-| `urgency` | `enum` | `values:[{value,label,level}]`, where `level` is `neutral`, `low`, `medium`, `high` or `critical`; a neutral `default` when the platform has one |
-| `external-deadline` | `date` | `format:"YYYY-MM-DD"` |
+| `ready` | 에이전트가 집어 갈 수 있는 완성된 스펙. **블로커가 열려 있어도 `ready`** | `to-tickets` |
+| `in-progress` | 구현 중 | `implement` |
+| `awaiting-review` | 사람이 읽을 수 있다. `verify` 와 round 를 부를 수 있다. 검증됐다는 뜻은 아니다 | `implement` · `review-round` |
+| `in-review` | round 가 돌고 있다 = 브랜치에 이미 쓰는 이가 있다 | `review-round` |
+| `blocked` | 사람의 결정 없이는 못 나간다 | `implement` · `review-round` · `land` |
 
-For `enum`, only an advertised `values[].value` is valid. For `date`, a value is valid when it satisfies the
-advertised format and adapter validation. An adapter omits a property it cannot describe safely. An unset or
-default-preserving property is represented by omitting its key from `properties-json`, never by sending
-`"unset"` or `null`. Other semantics may be advertised for explicit user input, but `to-tickets` does not infer
-them.
+끝났을 때 참이어야 하는 것.
 
-## State machine
+- 티켓은 언제나 정확히 하나의 루프 상태에 있다. 상태를 바꿀 때 이전 표식을 지우고 새 것을 단다. 바꾼 뒤 읽어서 하나만 남았는지 본다.
+- 트래커 상태가 유일한 진실이다. PR 의 draft 여부는 상태 신호가 아니다. 그래서 PR 은 항상 non-draft 로 연다.
+- `ready` 는 «스펙이 끝났다» 이고 «오늘 시작할 수 있다» 가 아니다. 시작 가능 여부는 엣지에서 나온다. 좁게 읽으면 블로커가 닫힐 때 라벨을 다시 붙여 줄 사람이 없다. 두 번 뒤집은 끝에 정한 것이다(evidence.md).
 
-Tracker state is the **single source of truth** for where a ticket sits in the loop. A PR's draft flag is
-never used as a state signal — two signals saying the same thing will drift. Therefore **PRs are always
-opened non-draft.**
+### 트래커에서의 표현
 
-| State | Meaning | Set by |
+| 개념 | Linear | GitHub Issues |
 |---|---|---|
-| `ready` | A complete spec an agent may pick up — **blocked tickets carry it too** | `to-tickets` |
-| `in-progress` | Being implemented | `implement` |
-| `awaiting-review` | Human can read it; `verify` and a round can be fired. Says nothing about verification — that is the record's sha ([Vocabulary]) | `implement` · `review-round` |
-| `in-review` | A round is running = the branch already has a writer | `review-round` |
-| `blocked` | Cannot proceed without a human decision | `implement` · `review-round` · `land` |
+| 루프 상태 | `agent:<state>` 라벨 하나 (Agent 그룹) | `ready-for-agent` · `agent-in-progress` · `agent-awaiting-review` · `agent-in-review` · `agent-blocked` 라벨 하나 |
+| 팀 상태 | 라벨과 함께 움직인다. ready → Todo, in-progress → In Progress, awaiting-review·in-review → In Review, 머지 → Done. blocked 는 그대로 둔다. 커스텀 "In Review / QA" 는 쓰지 않는다 | 없음 |
+| 블로킹 엣지 | blocked-by 관계 | blocked-by 관계 |
+| 부모 | parent (sub-issue). `to-tickets` 가 부모 티켓에서 출발했으면 반드시 건다 | 없다. 부모가 필요하면 멈추고 말한다 |
+| PR 바인딩 | PR 본문의 `Fixes YOU-nn`. 머지되면 Linear 가 Done 으로 옮긴다 | PR 본문의 `Closes #nn` |
 
-How a state is stored (GitHub: `ready-for-agent` / `agent-*` labels) is the adapter's mapping; skills
-use only the names above.
+## 블로킹 엣지
 
-Mergeability is a judgment, and judgment is the human's — it is expressed by firing `land` with the
-tickets to merge (see [Loop map]). `land` drains that signed set: it orders the queue, syncs each
-base, assembles conflict resolutions from both sides' documented intents, and merges. A conflict with
-no union of intents (the two sides change the same behaviour incompatibly) exceeds the signature's
-delegation and bounces to `blocked` — the human signed both PRs without knowing they contradict.
+- 네이티브 엣지가 블로커의 **유일한** 기록이다. 본문에 블로커 목록을 쓰지 않는다. 두 곳에 두면 본문 쪽이 블로커가 머지된 순간 썩는다.
+- 본문에는 이유 한 문장만 허용한다. "YOU-70 의 schema 컬럼을 읽으므로 그 PR 이 merge 된 뒤 시작". 이유는 블로커가 닫혀도 참이고, 목록은 거짓이 된다.
+- 엣지가 빠지면 티켓이 어디서나 «시작 가능» 으로 보인다. 소리 없는 결함이다. `to-tickets` 는 게시 뒤 엣지를 읽어서 승인된 것과 대조한다. 누구든 빠진 엣지를 보면 그 자리에서 등록한다.
+- 블로커가 실제로 풀렸는지는 열림/닫힘과 PR 머지 여부로 본다. 루프 상태 라벨은 사람이 손대서 뒤처진다.
 
-## Blocking edges
+## 완료 조건
 
-The tracker's **native dependency edge is the single source of truth** for blocked-ness. Every reader —
-`list-startable`, `implement`'s blocker gate, a human opening the ticket (both GitHub and Linear render
-blocked-by in the issue sidebar) — reads that edge, and only that edge:
+- 이슈가 조건을 소유한다. PR 본문 `## 완료 조건 검증` 이 현재 검증 기록이고, **`verify` 만 쓴다.** 기록은 커밋의 속성이다. `검증 대상` sha 가 PR head 이거나 머지 커밋만 다를 때만 현재다.
+- 이슈 체크박스는 **`land` 만**, 머지 직전에 바꾼다. 새 티켓은 전부 빈칸이다.
+- 체크박스를 바꿀 때 참이어야 하는 것.
+  - 체크박스 문자 외에는 본문이 한 글자도 달라지지 않는다.
+  - 저장 직전에 본문을 다시 읽고, 그 최신 본문 위에서만 고친다. 세션 초반에 읽어 둔 사본을 쓰지 않는다.
+  - 도구에 부분 편집(정확히 한 번 일치하는 문자열 치환)이 있으면 본문 전체 교체 대신 그것을 쓴다.
+  - 저장 뒤 다시 읽어 바뀐 것이 체크박스만인지 본다. 다르면 멈추고 보고한다. 되돌리거나 다시 시도하지 않는다.
+- 체크는 검증된 충족이다. 사람이 머지를 승인해도 남은 조건이 체크되지 않는다.
+- 나머지 규칙은 `references/acceptance-criteria.md`.
 
-```bash
-"$TRACKER" add-edge <N> <blocker>   # write
-"$TRACKER" blockers <N>             # read — never the raw platform API
-```
+## 워크트리
 
-**The body carries no blocker list.** A `## Blocked by` section was once a mandatory second copy; it went
-stale the moment a blocker landed, because nothing rewrote it, and every agent had to reconcile the two.
-Neither the body nor the loop state duplicates the edge — a second copy of the same fact is the one that
-drifts. What the body *may* carry is the **reason** an edge exists, as one sentence of background in the
-relevant section ("YOU-70 의 schema 컬럼을 읽으므로 그 PR 이 merge 된 뒤 시작") — a reason stays true after
-the blocker lands, a list does not.
+- 경로 `.claude/worktrees/issue-<N>-<slug>`, 브랜치 `agent/issue-<N>-<slug>`. slug 는 티켓 제목의 kebab-case.
+- 새 워크트리는 `pnpm install` 과 메인 체크아웃의 `routeTree.gen.ts` 복사가 있어야 쓸 수 있다. `tsr generate` 는 `declare module` 블록을 조용히 떨어뜨리니 돌리지 않는다. `implement/scripts/prepare-worktree.sh` 가 한 번에 한다.
+- PR 이 머지될 때까지 워크트리를 남긴다. 재작업과 다음 round 가 같은 것을 쓴다.
 
-Because the edge is the only copy, a missing `add-edge` is a silent defect: the ticket reads as startable
-everywhere. `to-tickets` verifies every published ticket's edges through `blockers <id>` before it reports
-done. Whoever else notices a missing edge registers it on the spot. Merging or splitting tickets moves the
-edges too.
+## 사람이 읽는 글
 
-## Worktree convention
+전부 한국어다. PR 제목·본문, 티켓 본문·코멘트, round 코멘트, 커밋 메시지.
 
-Path is `.claude/worktrees/issue-<N>-<slug>`, branch is `agent/issue-<N>-<slug>`, where `slug` is the
-kebab-case ticket title.
+- 티켓 본문과 티켓 코멘트는 기획·디자인·운영도 읽는다. `korean-output` 스킬을 적용한다. 사용자가 무엇을 할 수 있게 되는지, 왜 그런지를 말한다. 피할 수 없는 기술 용어는 한 문장으로 푼다. 파일 단위 계획, 고른 API 형태, 스키마 스케치는 PR 에 둔다.
+- PR 제목·본문, round 코멘트, 커밋 메시지는 개발자끼리 읽는다. 기술 문체와 정밀함이 맞다.
 
-A fresh worktree needs two things before it is usable:
-
-1. `pnpm install` — monorepo pnpm links are installed per worktree. Without it check-types breaks.
-2. Copy `routeTree.gen.ts` from the main checkout — it is gitignored, so a new worktree lacks it.
-   Never run `tsr generate`; it silently drops the `declare module` block. Applies to every app
-   that carries a generated route tree.
-
-`implement`'s `scripts/prepare-worktree.sh` does all of this in one call.
-
-**Keep the worktree until the PR merges.** Rework and later rounds reuse the same one.
-
-## Output convention
-
-Everything a human reads is written in **Korean**: PR titles and bodies, ticket bodies and comments, round
-comments, commit messages.
-
-Korean prose in this loop has **two audiences, two registers**:
-
-- **Ticket bodies and ticket comments** are read by non-developers too (기획·디자인·운영). Apply the
-  `korean-output` skill (`~/.agents/skills/korean-output/SKILL.md`) and write so a non-developer can follow:
-  no developer-translationese, no compressed jargon chains — say what the user will be able to do and why,
-  and unpack any technical term you cannot avoid in one plain sentence. Describe outcomes, agreed rules
-  and scope in natural language. Include technical contracts only when the implementer cannot choose them;
-  file-level plans, chosen API shapes and schema sketches belong in the PR.
-- **PR titles/bodies, round comments, commit messages** are developer-to-developer — technical register
-  and agent-style precision are fine there.
-
-There is exactly one path to a commit:
+커밋으로 가는 길은 하나다.
 
 ```
-comment-cleaner (no argument)  →  pnpm check-types:<app>  →  commit skill  →  git push
+comment-cleaner (인자 없이)  →  pnpm check-types:<app>  →  commit 스킬  →  git push
 ```
 
-- `comment-cleaner` goes **before** `commit`. Comment edits are code changes, and the rounds that
-  follow will read them.
-- Typecheck through the app script only: `pnpm check-types:<app>`, one per app in the monorepo.
-  Never call `tsc` or `turbo run` directly.
-- Commit through the `commit` skill only. Never run `git commit` directly. The one exception is
-  **completing a conflict resolution** in `land` (`git commit --no-edit`): a resolution authors
-  nothing, so the authored-change pipeline does not apply.
+- `comment-cleaner` 가 `commit` 앞이다. 주석 수정도 코드 변경이고, 다음 round 가 읽는다.
+- 타입 체크는 앱 스크립트로만. `tsc`·`turbo run` 을 직접 부르지 않는다.
+- 커밋은 `commit` 스킬로만. 예외는 `land` 의 충돌 해소 완료(`git commit --no-edit`) 하나다. 해소는 새로 쓴 것이 없다.
 
 ## Never
 
-- **Never merge** — except `land`, and only a PR the human named or confirmed **in that run**.
-  The only path work takes to the base branch is the PR.
-- **Never commit or push to the base branch**, whatever it is named.
-- **Never force-push. No exceptions** — nothing in this loop rewrites a pushed branch.
-- **Never bypass the adapter for ticket state** — a raw platform call is a second writer.
-- **Only a human-fired `review-round` may launch paid review engines.** One invocation authorizes
-  exactly one pass from each engine configured by that skill, all against its pinned head. `implement`,
-  `land`, background jobs and every other skill must never start a review. A retry is another explicit
-  `review-round` invocation — never an automatic loop.
-- **Only `verify` writes `## 완료 조건 검증`.** `implement` leaves the placeholder; rounds and `land` read
-  the record and never rewrite it. A result written anywhere else is a second writer of the evidence — and
-  the one that came back all 미검증 with a guessed reason when it lived inside `implement`
-  (`references/evidence.md`, «Verification»).
+- **머지하지 않는다.** `land` 만, 그 실행에서 사람이 지명하거나 확인한 PR 만.
+- **base 브랜치에 커밋·푸시하지 않는다.** 이름이 무엇이든.
+- **force-push 하지 않는다.** 예외 없다. 이 루프는 푸시된 브랜치를 다시 쓰지 않는다.
+- **트래커 상태를 두 곳에 쓰지 않는다.** 본문·PR·별도 파일에 상태를 복사하면 그 사본이 두 번째 쓰는 이가 된다.
+- **유료 리뷰 엔진은 사람이 부른 `review-round` 만 띄운다.** 한 번 호출이 각 엔진 한 번씩, 고정된 head 에 대해서다. `implement`·`land`·백그라운드 작업은 리뷰를 시작하지 않는다. 재시도도 사람이 다시 부르는 것이다.
+- **`## 완료 조건 검증` 은 `verify` 만 쓴다.** `implement` 는 자리만 남기고, round 와 `land` 는 읽기만 한다. `implement` 안에서 쓰게 했을 때 검증 없이 이유를 지어냈다(evidence.md 「Verification」).
+
+## 파일
+
+- `references/acceptance-criteria.md` 완료 조건을 쓰고, 검증하고, 체크하는 규칙.
+- `references/evidence.md` 위 규칙들이 나온 사고와 측정. 규칙이 의심스러울 때만.
+- `review-round/` round 코멘트 형식, 팀 코멘트 형식, 리뷰 엔진 스크립트.

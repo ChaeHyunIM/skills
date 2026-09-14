@@ -1,6 +1,7 @@
 ---
 name: tidy-merged
-description: Removes merged agent/issue-* worktrees and local branches only after proving the PR is merged, the local HEAD matches GitHub's recorded head SHA, and no local changes, untracked files, stashes, active Claude session, or active Codex task remain. Use only when the user explicitly invokes `$tidy-merged` in Codex or `/tidy-merged` in Claude Code.
+description: "`/tidy-merged`. 머지가 확인된 agent/issue-* worktree 와 로컬 브랜치를 정리한다."
+disable-model-invocation: true
 ---
 
 # tidy-merged
