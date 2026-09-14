@@ -1,6 +1,6 @@
 interface:
-  display_name: "Review Round"
-  short_description: "Run one dual-engine review round on an implement PR"
-  default_prompt: "Use $review-round to review the implement PR for the tracker ticket I name."
+  display_name: "리뷰 라운드"
+  short_description: "Claude와 Codex가 PR을 리뷰하고 수정 결과와 남은 결정을 정리합니다."
+  default_prompt: "$review-round로 지정한 티켓의 PR을 리뷰하고 수정 결과와 남은 결정을 정리해 줘."
 policy:
   allow_implicit_invocation: false

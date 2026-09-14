@@ -1,40 +1,44 @@
-# Web flows with Playwright
+# Playwright로 web 동작 확인하기
 
-Use this when a repeatable web spec adds regression value or the user requests one. One-off browser
-observations can be evidence with a reproducible route and actual result; they do not require this workflow.
-Reuse the configured browser tool and existing Playwright setup. Do not install persistent configuration
-from a verification-only run. Put new verification harness files in an already ignored artifact directory
-or a temporary workspace; `implement` can later include an approved regression test in the PR.
+같은 동작을 반복 검사할 가치가 있거나 사용자가 테스트 작성을 요청했을 때 읽는다. 브라우저에서 한 번 직접 확인하는 일은 재현 방법과 실제 결과를 남기면 되며, 아래 절차를 모두 따를 필요는 없다.
 
-## Existing repo layout (installation belongs to implementation)
+설정된 브라우저 도구와 기존 Playwright 환경을 사용한다. `verify`에서는 저장소에 계속 남을 설정을 설치하지 않는다. 새 테스트 환경이 필요하면 이미 gitignore로 제외된 폴더나 임시 작업 폴더에 만든다. 승인된 회귀 테스트는 나중에 `implement`에서 PR에 반영할 수 있다.
+
+## 기존 테스트 설정 확인
+
+설정 설치는 구현 작업에서 한다. 기존 파일은 다음 위치에 있다.
 
 ```
-playwright.config.ts          root; testDir apps/, matches apps/*/e2e/*.spec.ts
+playwright.config.ts          저장소 루트. testDir은 apps/, 대상은 apps/*/e2e/*.spec.ts
 apps/<app>/e2e/<claim>.spec.ts
-.e2e/                          gitignored: storage-state/, results/, evidence/, servers/
+.e2e/                          gitignore로 제외: storage-state/, results/, evidence/, servers/
 ```
 
-Env read by the config: `E2E_BASE_URL` (default `http://localhost:3000`), `E2E_STORAGE_STATE` (optional),
-`E2E_OUT` (results dir, default `.e2e/results`), `E2E_TEST_DIR` (optional temporary harness directory). Set `E2E_VIDEO=1` only when motion is useful evidence. Trace is retained on failure; JSON report at
-`$E2E_OUT/report.json`.
+설정에서 읽는 환경 변수는 다음과 같다.
 
-## Login: storage state saved by a human
+| 변수 | 용도와 기본값 |
+|---|---|
+| `E2E_BASE_URL` | 검사할 서버. 기본은 `http://localhost:3000` |
+| `E2E_STORAGE_STATE` | 저장한 로그인 상태. 필요한 경우 지정 |
+| `E2E_OUT` | 실행 결과 폴더. 기본은 `.e2e/results` |
+| `E2E_TEST_DIR` | 임시 테스트 폴더를 사용할 때 지정 |
+| `E2E_VIDEO` | 움직임이 검증 근거로 필요할 때만 `1`로 지정 |
 
-doko and admin sit behind social login, so a spec cannot log in by itself. The human logs in **once** in the
-Playwright MCP browser (it keeps a persistent profile, so the login survives sessions), then the agent saves the
-state:
+실패한 실행의 trace를 보관하고, JSON 보고서는 `$E2E_OUT/report.json`에 저장한다.
 
-1. Ask the human: «Playwright MCP 브라우저에서 <app> 에 로그인해 주세요. 끝나면 알려 주세요.»
-2. Call the MCP tool `browser_storage_state` to save cookies + localStorage to
-   `.e2e/storage-state/<app>.json`.
-3. Specs run with `E2E_STORAGE_STATE=.e2e/storage-state/<app>.json`.
+## 로그인 상태 저장
 
-The file is gitignored and must never be attached, quoted or pasted. When a run lands on the login page instead
-of the target route, the state expired: go back to step 1, do not try to automate the provider login.
+doko와 admin은 소셜 로그인을 사용하므로 테스트에서 직접 로그인할 수 없다. 사람이 Playwright MCP 브라우저에 한 번 로그인하고 에이전트가 그 상태를 저장한다. 브라우저는 프로필을 유지하므로 로그인 상태가 세션 사이에도 이어진다.
 
-## Exploration with the Playwright MCP
+1. 사용자에게 “Playwright MCP 브라우저에서 <app>에 로그인해 주세요. 끝나면 알려 주세요.”라고 요청한다.
+2. `browser_storage_state`로 쿠키와 localStorage를 `.e2e/storage-state/<app>.json`에 저장한다.
+3. 테스트에 `E2E_STORAGE_STATE=.e2e/storage-state/<app>.json`을 전달한다.
 
-Install (persistent config — the human runs or approves this):
+이 파일은 gitignore로 제외하고 첨부하거나 내용을 인용·붙여넣지 않는다. 테스트가 확인할 화면 대신 로그인 화면으로 이동하면 로그인 상태가 만료된 것이므로 1단계부터 다시 진행한다. 로그인 제공자의 화면을 자동화하려고 시도하지 않는다.
+
+## 브라우저 조작을 테스트로 옮기기
+
+Playwright MCP의 영구 설정이 필요하면 사람이 실행하거나 승인한 뒤 설치한다.
 
 ```bash
 claude mcp add playwright -- npx @playwright/mcp@latest --caps testing          # Claude Code
@@ -44,22 +48,16 @@ claude mcp add playwright -- npx @playwright/mcp@latest --caps testing          
 # args = ["@playwright/mcp@latest", "--caps", "testing"]
 ```
 
-Flow:
+1. `browser_navigate`로 head URL에 접속한다. 화면을 살펴볼 때는 스크린샷보다 `browser_snapshot`의 접근성 트리를 읽는다.
+2. `browser_start_recording`을 시작하고 `browser_click`·`browser_type` 등으로 조작한다. `browser_verify_text_visible`·`browser_verify_element_visible`·`browser_verify_value`로 결과를 확인한다.
+3. `browser_stop_recording`이 조작을 Playwright 코드로 반환한다. 요소를 잘못 선택한 부분은 `browser_generate_locator`로 다시 찾는다.
+4. 아래 기준으로 테스트를 작성한다. 기록된 코드에는 확인할 조건, 이름 붙인 캡처, assertion의 시간 제한이 빠져 있으므로 그대로 붙여넣지 않는다.
 
-1. `browser_navigate` to the head URL. `browser_snapshot` — read the accessibility tree, not screenshots.
-2. `browser_start_recording`, perform the action(s) with `browser_click` / `browser_type` / …, confirm the
-   result with `browser_verify_text_visible` / `browser_verify_element_visible` / `browser_verify_value`.
-3. `browser_stop_recording` returns the actions as Playwright code. `browser_generate_locator` gives a stable
-   locator for anything the recorder picked poorly.
-4. Author the spec from that code (below). Do not paste the recorder output unedited — it lacks the claim,
-   the named screenshots and the assertion timeout.
+Claude Code에서 Playwright MCP가 없으면 1단계는 Chrome MCP로 대신할 수 있다. 이 도구는 코드를 생성하지 않으므로 화면 정보를 보고 테스트를 작성한다. 직접 확인한 결과라면 그렇게 표시하고, 반복 실행할 가치가 있을 때만 테스트로 만든다.
 
-Chrome MCP (Claude Code only) can substitute for step 1 when the Playwright MCP is not installed, but it emits no
-code, so the spec is written from the snapshot by hand. A direct observation is labeled as such; author a replayable spec only when it adds value.
+## 테스트 작성 기준
 
-## Authoring the spec
-
-Keep assertions traceable to the conditions they cover. A short flow may cover related conditions. Skeleton (`templates/example.spec.ts` is the full version):
+각 assertion이 어느 완료 조건을 확인하는지 알 수 있게 작성한다. 관련 있는 조건은 짧은 흐름 하나에서 함께 확인할 수 있다. 아래는 기본 예시이며 전체 예시는 `templates/example.spec.ts`에 있다.
 
 ```ts
 import { test, expect } from "@playwright/test";
@@ -75,59 +73,54 @@ test("이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 
 });
 ```
 
-- Locators by role/text first, `data-testid` second, CSS last. Never `page.waitForTimeout` — assertions wait.
-- The assertion timeout is the pass criterion's timeout.
-- Named screenshots at 조작 전 · 조작 · 결과. They are the stills for the PR; keep them.
-- State claims: a single `expect(...).toBeVisible()` and one screenshot named `state.png`.
-- Test data: the flow must find or create what it needs on the dev database and clean up what it created.
-  A flow that depends on a row someone else may delete is flaky by design — say so if unavoidable.
+- 요소는 role·text, `data-testid`, CSS 순서로 찾는다. `page.waitForTimeout`은 쓰지 않고 assertion이 결과를 기다리게 한다.
+- assertion의 시간 제한은 완료 조건에서 약속한 시간과 맞춘다.
+- 조작 전·조작·결과 지점의 캡처에는 이름을 붙여 보관한다. PR에 넣을 스틸 이미지로 사용한다.
+- 화면 상태를 확인하는 조건은 `expect(...).toBeVisible()` 한 번과 `state.png` 캡처 하나로 표현한다.
+- 테스트에 필요한 데이터는 개발 DB에서 찾거나 만들고, 직접 만든 데이터는 정리한다. 다른 사람이 지울 수 있는 데이터에 의존하면 결과가 불안정해질 수 있으므로 피할 수 없다면 그 점을 밝힌다.
 
-## Running against head and base
+## 변경 후 코드와 변경 전 코드에서 실행
 
 ```bash
 # head
 E2E_BASE_URL=http://localhost:3000 E2E_STORAGE_STATE=.e2e/storage-state/doko.json E2E_OUT=.e2e/results/head \
   pnpm exec playwright test apps/doko/e2e/<claim>.spec.ts --project=chromium
-# base — only when comparison is needed; same spec, different verified target URL
+# base — 비교가 필요할 때만 같은 테스트를 확인한 base URL에서 실행
 E2E_BASE_URL=http://localhost:3100 E2E_STORAGE_STATE=.e2e/storage-state/doko.json E2E_OUT=.e2e/results/base \
   pnpm exec playwright test apps/doko/e2e/<claim>.spec.ts --project=chromium
 ```
 
-Read `$E2E_OUT/report.json`: `suites[].specs[].tests[].results[].status` is `passed` / `failed` / `timedOut`.
-`admin` has no `VITE_API_BASE_URL` (its client code was not found reading one), so a base `admin` server may
-still talk to the head API — check `apps/admin` before trusting an admin before/after. A timeout violating the agreed behavior is 미충족; a runner or environment timeout is 미검증. Retry only when the observed cause justifies it and report the retry.
+`$E2E_OUT/report.json`의 `suites[].specs[].tests[].results[].status`에서 `passed`·`failed`·`timedOut`을 확인한다.
 
-A base run that **fails to reach the action** (button absent, route 404) is «unreachable» in the matrix and
-counts as before-fails. Quote the failing step.
+이전 코드 확인에서는 admin 클라이언트가 `VITE_API_BASE_URL`을 읽는 부분을 찾지 못했다. base의 admin 서버가 head API를 사용할 수도 있으므로 admin을 비교하기 전에 현재 `apps/admin` 코드를 확인한다.
 
-## Media for the PR
+약속한 동작 시간을 넘겼으면 미충족, 테스트 실행기나 환경 문제로 시간을 넘겼으면 미검증이다. 확인한 원인상 다시 실행할 이유가 있을 때만 재시도하고 그 사실을 보고한다.
 
-Depending on the selected capture settings, Playwright writes video, trace and screenshots into
-`$E2E_OUT/<test-dir>/`. Copy what the record needs into `.e2e/evidence/<run>/` with short, whitespace-free
-names (`claim-2-head.mp4`, `claim-2-before-action.png`, …).
+base에 버튼이 없거나 화면이 404여서 조작 단계까지 갈 수 없으면 `unreachable`이며 변경 전 실패로 분류한다. 실제 실패한 단계를 근거로 적는다.
 
-GitHub renders `.webm`, but recommends H.264 for playback everywhere. Convert:
+## PR에 캡처와 영상 첨부
+
+설정에 따라 Playwright가 `$E2E_OUT/<test-dir>/`에 영상, trace, 캡처를 남긴다. 기록에 필요한 파일만 `.e2e/evidence/<run>/`으로 복사한다. `claim-2-head.mp4`, `claim-2-before-action.png`처럼 짧고 공백 없는 이름을 쓴다.
+
+GitHub는 `.webm`을 표시하지만 여러 환경에서 재생하려면 H.264를 권장한다. 변환할 때는 다음 명령을 쓴다.
 
 ```bash
 ffmpeg -y -i video.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart claim-2-head.mp4
 ```
 
-Attachment caps: **10 MB** for images and for videos on a free plan (100 MB on paid). Check the file size before
-attaching; over the cap → shorten the flow or reduce the viewport, never re-encode into mush. A clip longer than
-about 60 s is a sign the flow covers more than one claim — split it.
+첨부 한도는 무료 요금제에서 이미지와 영상 각각 10 MB, 유료 요금제에서는 100 MB다. 첨부 전에 크기를 확인한다. 한도를 넘으면 흐름을 짧게 하거나 화면 크기를 줄인다. 내용을 알아볼 수 없을 만큼 재인코딩하지 않는다. 60초보다 긴 영상은 여러 조건을 한 흐름에 넣은 것인지 살펴보고 나눈다.
 
-Two-step video table (only when a before/after **video** pair is worth a side-by-side):
+변경 전후 영상을 나란히 보여 줄 필요가 있을 때만 다음 절차를 쓴다.
 
-1. `gh pr comment <PR> --body-file own-lines.md --attach before.mp4 --attach after.mp4` — a temporary comment.
-2. `gh api repos/{owner}/{repo}/issues/comments/<id> --jq .body` → collect the
-   `https://github.com/user-attachments/assets/...` URLs.
-3. Put them into the item's `video-pair` media as `beforeUrl` / `afterUrl` in `results.json` and re-render;
-   `evidence-block.mjs` then emits a `<table>` of `<video>` cells instead of own-line videos.
-4. Re-read the published PR body; only then delete the temporary comment.
+1. `gh pr comment <PR> --body-file own-lines.md --attach before.mp4 --attach after.mp4`로 임시 코멘트를 올린다.
+2. `gh api repos/{owner}/{repo}/issues/comments/<id> --jq .body`로 `https://github.com/user-attachments/assets/...` URL을 가져온다.
+3. `results.json`의 해당 `video-pair` 항목에 `beforeUrl`·`afterUrl`을 넣고 본문을 다시 만든다. `evidence-block.mjs`가 영상을 별도 줄 대신 HTML 표의 `<video>` 셀에 넣는다.
+4. 게시된 PR 본문을 다시 읽어 확인한 뒤에만 임시 코멘트를 지운다.
 
-When video is needed, put the head video on its own line; a base video is optional unless comparison was requested.
+영상이 필요하면 head 영상은 별도 줄에 넣는다. base 영상은 사용자가 비교를 요청하지 않았다면 생략할 수 있다.
 
-## Verdict, then write results.json
+## 결과 판단과 기록
 
-Fill `results.json` (schema in `scripts/evidence-block.mjs`) from the actual runs and pass criterion. A base report is needed only when comparison was requested or necessary.
-`detail` for 충족 names the spec and the assertion; for 미충족 the expected vs actual; for 미검증 the cause.
+실제 실행 결과와 통과 기준으로 `results.json`을 채운다. 파일 형식은 `scripts/evidence-block.mjs` 첫 주석에 있다. base 결과는 비교를 요청받았거나 판단에 필요할 때만 준비한다.
+
+`detail`에는 충족이면 테스트와 assertion을, 미충족이면 기대한 결과와 실제 결과를, 미검증이면 확인하지 못한 원인을 적는다.

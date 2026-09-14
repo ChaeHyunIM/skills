@@ -1,104 +1,95 @@
-# Evidence behind the agent-loop rules
+# 규칙의 배경과 확인 기록
 
-Where the rules in `CONTRACT.md` and the five skills came from. Read this **only when a rule is in
-doubt** — a normal run does not need it.
+공유 규칙과 다섯 스킬의 규칙을 왜 만들었는지 적은 문서다. 규칙을 다시 살펴봐야 할 때만 읽고, 평소 실행에서는 읽을 필요가 없다.
 
-Separate the observed result from the proposed cause. Dates and runtime/model versions absent below
-were not recorded; do not infer them. Revisit environment-dependent workarounds when the relevant runtime,
-repository setup or observed behavior changes. Preserve protections until an alternative is verified.
+실제로 확인한 결과와 원인에 대한 추정을 구분한다. 아래에 날짜나 실행 환경·모델 버전이 없으면 당시 기록하지 않은 것이므로 추측해서 채우지 않는다. 실행 환경, 저장소 설정, 실제 동작이 바뀌면 그 환경에 맞춰 만든 해결 방법도 다시 확인한다. 다른 방법이 검증될 때까지 기존 보호 장치는 유지한다.
 
-## Contents
+## 목차
 
-- [Review rounds](#review-rounds)
-- [Ticket slicing](#ticket-slicing)
-- [Labels and blocking edges](#labels-and-blocking-edges)
-- [Worktrees and environment](#worktrees-and-environment)
-- [Verification](#verification)
+- [리뷰 실행](#리뷰-실행)
+- [티켓 나누기](#티켓-나누기)
+- [작업 상태와 선행 관계](#작업-상태와-선행-관계)
+- [worktree와 실행 환경](#worktree와-실행-환경)
+- [검증 기록](#검증-기록)
 
-## Review rounds
+## 리뷰 실행
 
-**`claude -p` really performs slash expansion**
-`/code-review`'s `disable-model-invocation` blocks only *the model calling itself*, not the CLI. A nested
-`-p` run produced real findings, exit 0, no permission prompt.
+**`claude -p`에서도 슬래시 명령이 실제로 실행됐다.**
 
-**Default text mode emits nothing mid-run**
-A 40-second run left the output file at 0 bytes the whole way and filled it only at exit. Switched to
-`stream-json`, the same run had 3 events on disk after 5 seconds and grew continuously. That is what makes
-a progress monitor possible — and why the output is JSONL, requiring `jq` extraction.
+`/code-review`의 `disable-model-invocation`은 모델이 스스로 스킬을 호출하는 것을 막으며 CLI 호출까지 막지는 않았다. 별도로 실행한 `-p`에서 실제 지적이 나왔고 종료 코드는 0이었다. 권한 확인 질문은 나타나지 않았다.
 
-**`CLAUDE_CODE_REPORT_FINDINGS=1` only takes effect under `stream-json`**
-The contract is off for `text` and `json`. Setting the env var without structured extraction means the
-final `result` body is a one-line count rather than the findings — so the round **looks like it passed
-with zero findings**.
+**기본 텍스트 출력은 실행 도중 아무 내용도 남기지 않았다.**
 
-**A bare `#1` is rewritten by GitHub into a PR link**
-In PR #111's round-1 comment, every 반영/기각/보류 item rendered as an unrelated old PR title. A local
-markdown preview never catches this. Hence finding numbers go inside backticks.
+40초 동안 실행한 결과 파일은 종료 전까지 0바이트였고 끝난 뒤에만 채워졌다. 같은 실행을 `stream-json`으로 바꾸자 5초 뒤 이벤트 3개가 기록됐고 이후에도 계속 늘었다. 진행 상황을 확인할 수 있도록 JSONL로 출력하고 `jq`로 결과를 추출하는 이유다.
 
-**Commit SHAs in a round comment stop existing within days**
-`dev` is rebase-merge only, so branch SHAs all change at merge time. PR #97's `커밋 05ccf1fac` became a
-value absent from the PR's commit list. A 보류 item in the same PR cited `8fc1efa2` from a different PR,
-forcing the reader through unrelated history.
+**`CLAUDE_CODE_REPORT_FINDINGS=1`은 `stream-json`에서만 적용됐다.**
 
-**`--comment`, `--fix` and `ultra` were not adopted**
-`ultra` is human-triggered and billed. The other two conflict with the rule that a round's deliverable is
-exactly one PR comment.
+`text`와 `json`에서는 정해진 지적 형식이 활성화되지 않았다. 환경 변수만 설정하고 결과를 구조에 맞춰 추출하지 않으면 마지막 `result`에 지적 대신 개수 한 줄만 남았다. 이 상태를 지적 0건으로 통과한 것처럼 잘못 읽을 수 있었다.
 
-## Ticket slicing
+**GitHub는 백틱 없는 `#1`을 PR 링크로 바꿨다.**
 
-**A forward-pointing dependency cannot be sequenced away**
-PR #142. `router.push('/reviews/place')` against a route the ticket above owned: `TS2345`, unmergeable.
-Hence whoever builds the destination also wires the entry point, and the earlier ticket renders it inert.
+PR #111의 첫 라운드 코멘트에서 반영·기각·보류 항목의 번호가 무관한 옛 PR 제목으로 표시됐다. 로컬 Markdown 미리보기로는 발견할 수 없었다. 그래서 지적 번호를 백틱으로 감싼다.
 
-## Labels and blocking edges
+**머지 뒤에는 라운드에서 인용한 커밋 SHA를 찾기 어려워졌다.**
 
-**`ready-for-agent` covers blocked tickets — settled 2026-08-01 after two reversals**
-2026-07-28 kept the label on blocked tickets; 07-30 reversed it to "startable today" and stripped #50·#51;
-08-01 reversed back for good. What decided it: the narrow reading needs someone to re-apply the label when
-a blocker closes, and nothing does. #50 was re-labelled by hand on 07-31; #143 never was, so it sat invisible
-after its blocker #151 closed. A `ticket-blocked` label was created on 07-30 for the same gap and deleted
-soon after. Do not re-narrow the label without first building the promotion step that the narrow reading
-requires.
+`dev`는 rebase 방식으로 머지하므로 작업 브랜치의 SHA가 바뀐다. PR #97의 `커밋 05ccf1fac`은 머지 후 PR 커밋 목록에서 찾을 수 없었다. 같은 PR의 보류 항목은 다른 PR의 `8fc1efa2`까지 인용해, 읽는 사람이 관계없는 이력을 따라가야 했다.
 
-**`-is:blocked` reads only native edges, so a body-only blocker reads as startable**
-Audited every open issue 2026-08-01. #46 declared `#42` (open) in its body with no native edge and appeared
-in the startable list; edges were missing on #42·#124·#125 and partial on #51·#126·#127, harmless only
-because those blockers had already closed. Registering #46's edge moved it to `is:blocked` immediately.
-Search indexing lags a write by seconds — re-query before concluding an edit did not take.
-This audit is why the body list was dropped on 2026-09-02: with two copies, the native one was the one
-left out, and the body one went stale once blockers landed. The edge is now the only record and
-`to-tickets` reads it back after publishing.
+**`--comment`, `--fix`, `ultra`는 사용하지 않기로 했다.**
 
-## Worktrees and environment
+`ultra`는 사람이 직접 시작하는 유료 작업이었다. `--comment`와 `--fix`는 라운드 결과를 PR 코멘트 하나로 모으는 규칙과 맞지 않았다.
 
-**A review run of `claude -p` removed its worktree on exit (runtime version not recorded)**
-Observed via `/review-round`; this is not established for every CLI version. Commits survived; only the checkout disappeared. Hence pushing before the
-review is mandatory. Recovery: `git worktree prune` → `worktree add` → `pnpm install` → copy routeTree
-(for every app that has one).
+## 티켓 나누기
 
-**A hollow worktree makes git fall through to the main checkout**
-The signal is a `git status` path starting with `../../../`.
+**나중에 만들 화면을 먼저 참조하는 문제는 순서만 조정해서 해결할 수 없었다.**
 
-**turbo excludes only gitignored files from its hash**
-A generated file like routeTree that affects types while being gitignored produces false cache hits.
-Currently resolved by folding route generation into the turbo task.
+PR #142에서 앞 티켓이 만들기로 한 경로에 `router.push('/reviews/place')`로 접근해 `TS2345`가 발생했고 머지할 수 없었다. 그래서 새 화면을 만드는 티켓에서 진입 버튼이나 링크도 연결한다. 그보다 앞선 티켓에서는 해당 진입을 활성화하지 않는다.
 
-## Verification
+## 작업 상태와 선행 관계
 
-**An implementation run reported unverified conditions without checking the environment**
+**`ready-for-agent`는 선행 작업이 남아 있어도 유지하기로 했다.**
 
-- Observed: PR #375 (2026-09-09) reported every condition 미검증, saying simulator installation was uncertain. The environment check on the same machine reported argent 0.24.0 and one booted simulator. That check had not been run in the implementation session.
-- Hypothesis at the time: the expensive verification route was reached after the coding context budget had been spent. The model, token budget and comparative runs were not recorded; the cause was not isolated.
-- Current rule: implement performs the necessary checks and records actual evidence. Verify is an optional continuation for remaining conditions or independent rechecks. Missing evidence must not be filled with an invented environment explanation.
-- Revisit: if implementation again stops without trying an available route, inspect the actual failing step and context before adding a universal stopping rule.
+2026-07-28에는 선행 작업이 남은 티켓에도 라벨을 유지했다. 07-30에는 “오늘 시작할 수 있음”으로 뜻을 바꾸고 #50·#51에서 라벨을 뺐다. 08-01에 다시 원래 뜻으로 정했다. 선행 작업이 끝나면 누군가 라벨을 다시 붙여야 하는데 그 일을 맡은 절차가 없었기 때문이다.
 
-**A record with a SHA became stale because nobody compared it with the PR head**
+#50은 07-31에 사람이 다시 붙였다. #143은 선행 작업 #151이 닫혀도 라벨이 돌아오지 않아 목록에서 보이지 않았다. 같은 문제로 07-30에 `ticket-blocked` 라벨도 만들었다가 곧 지웠다. 다시 “바로 시작할 수 있음”으로 좁히려면 선행 작업이 끝난 뒤 라벨을 붙이는 절차부터 마련해야 한다.
 
-Rework and review rounds added commits while the PR retained old 충족 lines. The comparison helper was introduced so land could expose the gap rather than treating old results as current.
+**본문에만 적은 선행 작업은 `-is:blocked` 검색에 반영되지 않았다.**
 
-**The merge-only exemption and range-count implementation disagreed (2026-09-14)**
+2026-08-01에 열린 이슈를 확인했다. #46은 본문에 열린 이슈 #42를 선행 작업으로 적었지만 트래커 관계로 연결하지 않아 시작 가능한 목록에 나왔다. #42·#124·#125도 관계가 빠져 있었고 #51·#126·#127은 일부만 연결돼 있었다. 이 경우는 선행 작업이 이미 끝나 문제가 드러나지 않았을 뿐이다.
 
-- Observed in a temporary Git repository with the original helper and stubbed GitHub response: exact head returned current; a PR head rolled back to an ancestor also returned current; merging a new ordinary base commit returned stale despite the documented exemption.
-- Cause: `rev-list --no-merges old..head` counts reachable base commits and does not prove equality or ancestry. A merge commit also does not prove unchanged runtime behavior.
-- Current rule: current requires exact commit equality. Stale reports a symmetric commit count without implying chronological distance. Implement and verify evaluate condition-level evidence; land requires informed approval for any remaining gap.
-- Revisit only with tests covering equality, rollback, divergence, base integration and conflict-resolution changes.
+#46에 실제 관계를 연결하자 바로 `is:blocked`로 분류됐다. 검색 결과 반영은 몇 초 늦을 수 있으므로 편집이 실패했다고 판단하기 전에 다시 조회해야 한다.
+
+이 기록을 바탕으로 2026-09-02에 본문의 선행 작업 목록을 없앴다. 두 곳에 적으면 실제 관계 설정이 빠지기 쉬웠고, 선행 PR이 머지돼도 본문은 그대로 남았다. 이제 트래커의 관계 기능만 사용하고 `to-tickets`가 티켓을 만든 뒤 다시 확인한다.
+
+## worktree와 실행 환경
+
+**`claude -p` 리뷰가 종료되면서 worktree를 지운 사례가 있었다.**
+
+`/review-round`에서 관찰했으며 당시 실행 환경 버전은 기록하지 않았다. 모든 CLI 버전에서 같은 일이 생긴다고 확인한 것은 아니다. 커밋은 남았지만 체크아웃만 사라졌다. 그래서 리뷰 전에 push한다. 복구는 `git worktree prune` → `worktree add` → `pnpm install` → 각 앱의 routeTree 복사 순서로 했다.
+
+**빈 worktree에서는 Git이 메인 체크아웃을 찾았다.**
+
+`git status`의 파일 경로가 `../../../`로 시작하면 이런 상황을 의심할 수 있다.
+
+**gitignore로 제외된 생성 파일은 Turbo 캐시에 영향을 주지 않았다.**
+
+타입에 영향을 주는 routeTree 같은 파일이 gitignore 대상이면 파일이 달라져도 기존 캐시가 재사용됐다. 당시에는 경로 생성 작업을 Turbo 작업에 포함해 해결했다.
+
+## 검증 기록
+
+**구현 중 실제 환경을 확인하지 않고 모든 조건을 미검증으로 보고한 사례가 있었다.**
+
+- 확인한 사실: PR #375(2026-09-09)에서 시뮬레이터 설치 여부가 불확실하다며 모든 조건을 미검증으로 적었다. 같은 기기에서 환경 검사를 실행하니 argent 0.24.0과 부팅된 시뮬레이터 한 대가 있었다. 구현 세션에서는 이 검사를 실행하지 않았다.
+- 당시 추정: 코딩에 컨텍스트를 쓴 뒤 복잡한 검증 절차에 도달했기 때문일 수 있다고 보았다. 모델, 토큰 예산, 비교 실행은 기록하지 않았으므로 원인을 특정한 것은 아니다.
+- 현재 규칙: `implement`가 필요한 검사를 하고 실제 근거를 남긴다. `verify`는 남은 조건이나 별도 확인을 위한 선택 사항이다. 근거가 없다고 환경 문제를 지어내지 않는다.
+- 다시 확인할 상황: 사용 가능한 검증을 시도하지 않고 구현이 끝나는 일이 반복되면, 모든 작업에 중단 규칙을 추가하기 전에 실제로 어디서 막혔고 컨텍스트가 어땠는지 살핀다.
+
+**SHA를 적어도 현재 PR 커밋과 비교하지 않으면 오래된 검증 결과가 남았다.**
+
+기존 구현을 수정하거나 리뷰 결과를 반영하면서 커밋이 추가돼도 PR에는 옛 충족 기록이 남았다. `land`에서 그 차이를 보여 줄 수 있도록 커밋 비교 스크립트를 만들었다.
+
+**merge 커밋만 달라진 경우의 예외와 실제 비교 스크립트가 맞지 않았다.**
+
+- 확인한 사실(2026-09-14): 임시 Git 저장소에서 원래 스크립트와 가짜 GitHub 응답으로 검사했다. head가 같으면 `current`였지만, PR head를 이전 커밋으로 되돌려도 `current`였다. 새 일반 base 커밋을 merge한 경우에는 문서의 예외와 달리 `stale`이었다.
+- 원인: `rev-list --no-merges old..head`는 그 범위에서 도달할 수 있는 base 커밋도 센다. 커밋이 같은지나 어느 쪽이 이전 커밋인지를 보장하지 못한다. merge 커밋이라는 사실도 동작이 그대로라는 근거는 아니다.
+- 현재 규칙: 커밋이 정확히 같아야 `current`다. `stale`은 두 쪽 중 한쪽에만 있는 커밋 수를 합쳐 보여 주며, 몇 커밋 전인지로 설명하지 않는다. `implement`와 `verify`는 완료 조건마다 근거를 확인한다. `land`는 남은 확인 사항을 설명하고 승인받는다.
+- 다시 검토할 때 필요한 검사: 동일 커밋, rollback, 갈라진 브랜치, base 반영, 충돌 해결로 바뀐 코드를 모두 포함한다.

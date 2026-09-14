@@ -1,19 +1,19 @@
-# 트래커와 관계
+# 티켓 상태와 관계
 
-프로젝트 선택은 `<repo>/.claude/agent-loop/config`의 `TRACKER`, `LINEAR_TEAM_KEY`를 읽는다. 없으면 현재 세션의 명시된 저장소·티켓 정보로 확정할 수 있는지 확인하고, 쓰기 대상이 여전히 모호할 때만 묻는다.
+프로젝트에서 쓰는 트래커와 팀은 `<repo>/.claude/agent-loop/config`의 `TRACKER`, `LINEAR_TEAM_KEY`로 확인한다. 파일이 없으면 이번 세션에 명시된 저장소와 티켓 정보로 대상을 확정할 수 있는지 본다. 그래도 어느 곳을 고쳐야 할지 모호할 때만 묻는다.
 
-| 개념 | Linear | GitHub Issues |
+| 항목 | Linear | GitHub Issues |
 |---|---|---|
-| 루프 상태 | Agent 그룹의 `agent:<state>` 하나 | `ready-for-agent` · `agent-in-progress` · `agent-awaiting-review` · `agent-in-review` · `agent-blocked` 하나 |
-| 팀 상태 | ready → Todo, in-progress → In Progress, awaiting-review·in-review → In Review, 머지 → Done. blocked는 유지 | 없음 |
-| 블로커 | 네이티브 blocked-by | 네이티브 blocked-by |
-| 부모 | parent/sub-issue | 세션 도구의 네이티브 sub-issue 기능이 있는지 확인 |
-| PR 바인딩 | `Fixes YOU-nn` | `Closes #nn` |
+| agent-loop 작업 상태 | Agent 그룹의 `agent:<state>` 라벨 하나 | `ready-for-agent` · `agent-in-progress` · `agent-awaiting-review` · `agent-in-review` · `agent-blocked` 중 하나 |
+| 팀의 작업 상태 | ready → Todo, in-progress → In Progress, awaiting-review·in-review → In Review, 머지 → Done. blocked는 기존 팀 상태 유지 | 없음 |
+| 선행 작업 | 트래커의 `blocked-by` 관계 | 트래커의 `blocked-by` 관계 |
+| 상위 티켓 | `parent`·`sub-issue` 관계 | 현재 도구가 트래커의 `sub-issue` 기능을 지원하는지 확인 |
+| PR에서 티켓 연결 | `Fixes YOU-nn` | `Closes #nn` |
 
-- 커스텀 `In Review / QA` 상태를 만들지 않는다. 상태를 바꾸면 이전 표식을 제거하고 하나만 남았는지 읽는다.
-- `ready`는 스펙 준비 여부다. 시작 가능 여부는 블로커의 실제 종료 상태와 연결 PR의 머지 여부에서 나온다.
-- 블로커의 유일한 기록은 네이티브 엣지다. 본문에 목록을 복제하지 않는다. 의존 이유 한 문장은 허용한다.
-- 부모에서 출발한 발행은 네이티브 부모 관계를 건다. 필요한 관계를 도구가 지원하지 않으면 해당 발행만 보류한다.
-- 승인된 엣지 누락은 보완하고 다시 읽는다. 새 의존이나 정책을 추측해서 추가하지 않는다. 검색 인덱스가 늦으면 직접 관계를 읽어 확인한다.
-- 티켓 제목·본문·코멘트는 한국어다. 비개발자도 읽는 본문은 `korean-output`을 적용하고 목표와 사용자에게 달라지는 동작을 쓴다. 기술 구현은 PR에 둔다.
-- doko 티켓·PR 제목은 프로젝트의 제품 접두어와 한국어 제목 규칙을 따른다. 대응 티켓이 있으면 PR 제목은 그 제목을 쓴다.
+- 별도의 `In Review / QA` 상태를 만들지 않는다. 작업 상태를 바꾸면 이전 라벨을 지우고 하나만 남았는지 다시 읽는다.
+- `ready`는 스펙 작성이 끝났다는 뜻이다. 바로 구현할 수 있는지는 선행 티켓이 끝났고 연결된 PR도 머지됐는지로 판단한다.
+- 선행 작업은 트래커의 관계 기능으로만 기록한다. 같은 목록을 본문에 다시 적지 않는다. 왜 그 작업에 의존하는지 설명하는 한 문장은 남겨도 된다.
+- 상위 티켓에서 작업을 나눠 만들었다면 트래커의 상위 티켓 관계를 연결한다. 필요한 관계를 도구가 지원하지 않으면 해당 티켓 작성만 보류한다.
+- 승인받은 관계가 빠졌으면 보완하고 다시 확인한다. 새로운 선행 작업이나 정책을 추측해서 추가하지 않는다. 검색 결과에 늦게 반영되면 해당 티켓의 관계를 직접 읽어서 확인한다.
+- 제목, 본문, 코멘트는 한국어로 쓴다. 비개발자도 읽는 본문에는 `korean-output`을 적용하고, 목표와 사용자에게 달라지는 동작을 적는다. 구현 방법은 PR에 적는다.
+- doko 티켓과 PR 제목은 프로젝트의 제품 접두어와 한국어 제목 규칙을 따른다. 대응하는 티켓이 있으면 PR 제목도 그 제목을 쓴다.

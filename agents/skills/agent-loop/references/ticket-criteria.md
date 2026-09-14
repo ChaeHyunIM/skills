@@ -1,33 +1,23 @@
 # 완료 조건 작성
 
-## Write the outcome, not the patch
+티켓에는 작업이 끝나면 무엇이 달라져야 하는지 적는다. 코드를 어떻게 바꿔서 그 결과를 만들었는지는 PR에 적는다.
 
-The issue describes **what must be true**; the PR describes **how the code makes it true**.
-Codebase exploration establishes feasibility, current behaviour and dependencies. Do not turn that
-exploration into a file-by-file implementation plan in the issue. Required external contracts belong
-under 정책과 제약; chosen functions, components, cache mechanisms and test commands belong in the PR.
+코드를 살펴보며 가능한 작업인지, 지금은 어떻게 동작하는지, 먼저 끝나야 할 일이 있는지 확인한다. 조사한 내용을 파일별 구현 계획으로 티켓에 옮기지는 않는다. 반드시 지켜야 하는 외부 API 등의 약속은 `정책과 제약`에 적는다. 구현하면서 고른 함수, 컴포넌트, 캐시 방식, 테스트 명령은 PR에 적는다.
 
-Use `## 완료 조건` in new tickets. `Acceptance criteria` and `검수 기준` are read-only legacy aliases,
-not additional sections or new vocabulary. Conditions are the `-`, `*`, `+` bullets under that heading,
-with or without checkboxes. Do not rewrite old tickets wholesale to migrate the heading.
+## 작성 기준
 
-- Derive each condition from the goal, approved policy or linked design. Do not invent policy.
-- Require an observable result. Add a precondition or action when needed to make that result unambiguous;
-  do not force a three-part sentence on every item. Split results that can pass independently.
-- Check both directions: can all conditions pass while the goal remains unmet? Does any condition add
-  work outside the agreed scope? Cover the main flow and material failure cases without a generic quota.
-- For user-facing work, describe what the user experiences. Backend-only, schema and infrastructure
-  tickets may use developer-observable results such as persisted data or a constraint rejecting input.
-- Establish how each result can be verified **before merge**. A dev build, simulator or dev service can
-  verify many device and integration conditions; do not label them post-release merely because they use
-  a device or an external service. Verification never authorizes a prohibited migration or production write.
-- A condition that truly needs release-time observation belongs to an explicitly owned follow-up ticket
-  created through `to-tickets`, with a native blocked-by edge to the implementation ticket. Include this
-  split in the approved breakdown; do not hide it in a 배포 후 확인 section or silently drop it from scope.
-- Present the actual conditions in the normal ticket approval, not a separate approval per checkbox.
-  Resolve ambiguous conditions and contradictory sources before publishing the affected ticket.
+- 새 티켓에서 완료 조건 섹션의 제목은 `## 완료 조건`으로 쓴다. 기존 `Acceptance criteria`·`검수 기준`은 같은 뜻으로 읽되, 새 섹션을 추가하거나 제목을 맞추려고 옛 티켓 전체를 고치지 않는다. 해당 제목 아래의 `-`·`*`·`+` 목록은 체크박스 유무와 관계없이 완료 조건으로 읽는다.
+- 각 조건은 목표, 승인된 정책, 연결된 디자인에서 가져온다. 새 정책을 만들지 않는다.
+- 직접 확인할 수 있는 결과를 적는다. 결과를 분명하게 하는 데 필요하면 전제나 행동도 적되, 모든 항목을 같은 세 부분 형식으로 쓸 필요는 없다. 각각 통과 여부를 판단할 수 있는 결과는 항목을 나눈다.
+- 완료 조건을 모두 만족하면 목표도 달성되는지 확인한다. 합의하지 않은 작업이 조건에 끼어 있지는 않은지도 확인한다. 주요 동작과 중요한 실패 상황을 포함하되 항목 수를 억지로 맞추지 않는다.
+- 사용자에게 보이는 기능은 사용자가 겪는 결과로 쓴다. 백엔드, 스키마, 인프라 작업은 저장된 데이터나 잘못된 입력을 거절하는 동작처럼 개발자가 확인할 수 있는 결과로 써도 된다.
+- 머지 전에 각 결과를 어떻게 확인할지 정한다. 개발 빌드, 시뮬레이터, 개발 서버로 기기 동작이나 서비스 연결을 확인할 수 있는지 살핀다. 기기나 외부 서비스를 쓴다는 이유만으로 배포 후 확인해야 한다고 판단하지 않는다. 검증이 필요해도 금지된 마이그레이션이나 운영 환경 쓰기를 실행할 권한이 생기지는 않는다.
+- 실제 배포 후에만 확인할 수 있는 항목은 누가 맡을지 정한 후속 티켓으로 남긴다. `to-tickets`로 만들고 구현 티켓을 `blocked-by`로 연결한다. 이렇게 나누는 계획도 승인받는다. `배포 후 확인`이라는 본문 섹션에만 숨겨 두거나 범위에서 빼지 않는다.
+- 완료 조건은 티켓의 다른 내용과 함께 승인받는다. 체크박스마다 따로 승인받을 필요는 없다. 뜻이 모호하거나 근거끼리 충돌하면 해당 티켓을 만들기 전에 확인한다.
 
-Examples (the illustrated behaviour must already be agreed):
+## 예시
+
+아래 동작은 이미 합의됐다는 전제의 예시다.
 
 ```markdown
 좋은 예 — 사용자 동작
@@ -41,5 +31,4 @@ Examples (the illustrated behaviour must already be agreed):
 - [ ] 타입 체크 통과, API와 컴포넌트 구현 완료.
 ```
 
-The last example names work and a general code check, not the promised result. If a schema example
-requires a human-applied migration, record that dependency; the agent must not apply it to get a check.
+마지막 예시는 한 일과 검사 이름만 나열해서 약속한 결과를 알 수 없다. 스키마 예시처럼 사람이 마이그레이션을 적용해야 확인할 수 있다면 그 선행 작업을 적는다. 체크박스를 채우려고 에이전트가 대신 적용하지 않는다.

@@ -1,9 +1,9 @@
-# 완료 조건의 소유권과 경로
+# 완료 조건과 검증 결과
 
-이슈는 관찰 가능한 조건을 소유하고, PR 본문은 그 조건의 검증 결과를 소유한다. `implement`가 필요한 검증과 기록을 끝냈으면 별도 `verify` 실행은 필요 없다.
+완료 조건은 이슈에, 그 조건을 확인한 결과는 PR 본문에 적는다. `implement`가 필요한 검증과 기록을 마쳤다면 별도 `verify` 실행은 필요 없다.
 
-- 조건을 쓰거나 의미를 확인할 때: [ticket-criteria.md](ticket-criteria.md).
-- 실행 근거를 기록·재사용하거나 현재 head와 대조할 때: [verification.md](verification.md). `implement`와 `verify`가 같은 규칙을 쓴다.
-- 머지 예외를 판단하거나 이슈 체크박스를 바꿀 때: [landing-criteria.md](landing-criteria.md).
+- 완료 조건을 쓰거나 뜻을 확인할 때: [완료 조건 작성](ticket-criteria.md).
+- 검증 결과를 기록하거나 재사용할 때, 현재 PR 커밋과 비교할 때: [검증과 기록 방법](verification.md). `implement`와 `verify`가 같은 규칙을 따른다.
+- 남은 검증이 있는 PR을 머지하거나 이슈 체크박스를 바꿀 때: [병합 전 완료 조건 확인](landing-criteria.md).
 
-조건의 의미 변경은 사람의 결정을 이슈에 남긴 뒤 한다. 검증 결과에 맞춰 조건을 약화하거나 삭제하지 않는다.
+완료 조건의 뜻을 바꾸려면 사람이 결정한 내용을 먼저 이슈에 남긴다. 검증 결과에 맞춰 조건을 느슨하게 바꾸거나 삭제하지 않는다.

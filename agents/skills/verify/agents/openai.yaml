@@ -1,6 +1,6 @@
 interface:
-  display_name: "Verify"
-  short_description: "Check remaining PR conditions and record evidence"
-  default_prompt: "Use $verify to check the remaining or changed conditions of this PR and reuse valid existing evidence."
+  display_name: "PR 검증"
+  short_description: "PR에서 남았거나 달라진 완료 조건을 확인하고 검증 결과를 적습니다."
+  default_prompt: "$verify로 이 PR에서 남았거나 달라진 완료 조건을 확인하고, 유효한 기존 검증 결과는 재사용해 줘."
 policy:
   allow_implicit_invocation: true
