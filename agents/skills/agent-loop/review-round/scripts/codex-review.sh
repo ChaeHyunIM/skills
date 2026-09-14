@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Runs and extracts one subscription-backed local Codex review for a pinned branch head.
-#
-#   preflight <model> <effort>
-#   run       <worktree> <comparison-ref> <head> <model> <effort> <result-path>
-#   extract   <result-path> <head> <model> <effort>
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,16 +10,11 @@ usage() {
 }
 
 assert_head() {
-  local worktree="$1" expected="$2" actual
-  actual=$(git -C "$worktree" rev-parse HEAD)
-  if [ "$actual" != "$expected" ]; then
-    echo "Worktree head moved during Codex review: expected=$expected actual=$actual" >&2
-    exit 4
-  fi
+  bash "$SCRIPT_DIR/../../scripts/check-worktree.sh" "$1" "$2" >/dev/null
 }
 
 preflight() {
-  local model="$1" effort="$2" login_status
+  local model="$1" effort="$2" login_status catalog
 
   command -v codex >/dev/null || { echo "codex CLI is not installed" >&2; exit 69; }
   command -v jq >/dev/null || { echo "jq is not installed" >&2; exit 69; }
@@ -40,13 +30,23 @@ preflight() {
     exit 77
   fi
 
-  if ! codex debug models --bundled 2>/dev/null | jq -e \
-    --arg model "$model" --arg effort "$effort" '
+  if ! catalog=$(codex debug models); then
+    echo "Could not read the Codex model catalog" >&2
+    exit 69
+  fi
+  if ! jq -e '.models | type == "array"' <<<"$catalog" >/dev/null; then
+    echo "Invalid Codex model catalog" >&2
+    exit 69
+  fi
+  # CLI 목록은 앱에서 사용 가능한 모델을 빠뜨릴 수 있어 부재만으로 지원 불가를 단정하지 않는다.
+  if ! jq -e --arg model "$model" 'any(.models[]; .slug == $model)' <<<"$catalog" >/dev/null; then
+    echo "Model absent from CLI catalog: $model; keeping the requested model for the single review attempt" >&2
+  elif ! jq -e --arg model "$model" --arg effort "$effort" '
       any(.models[];
         .slug == $model and
         any(.supported_reasoning_levels[]?; .effort == $effort)
       )
-    ' >/dev/null; then
+    ' <<<"$catalog" >/dev/null; then
     echo "Unsupported Codex model/effort: $model/$effort" >&2
     exit 64
   fi
@@ -63,8 +63,7 @@ run_review() {
 
   prompt="\$review-agent Review the base-branch change that would merge from the current HEAD into ${comparison_ref}. Follow the skill's review criteria and inspect the complete diff. Use the supplied output schema instead of the skill's prose result format."
 
-  # codex exec appends piped stdin as a <stdin> block and reads it to EOF. Under a harness exec
-  # session the inherited stdin pipe never closes, so detach it or the review hangs before starting.
+  # 실행 환경이 stdin 파이프를 닫지 않으면 Codex가 EOF를 기다리므로 입력을 분리한다.
   codex exec \
     --cd "$worktree" \
     --ephemeral \

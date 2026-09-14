@@ -1,6 +1,6 @@
 interface:
   display_name: "Verify"
-  short_description: "Prove a change works: tests, API calls, before/after captures, assertion-backed flows"
-  default_prompt: "Use $verify to verify the current change against its 완료 조건 and record evidence in the PR."
+  short_description: "Check remaining PR conditions and record evidence"
+  default_prompt: "Use $verify to check the remaining or changed conditions of this PR and reuse valid existing evidence."
 policy:
   allow_implicit_invocation: true

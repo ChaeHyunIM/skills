@@ -1,72 +1,31 @@
-# Routes: claim → how to check it → what counts as evidence
+# 조건별 검증 경로
 
-Read this at step [5]. Each route says what to run, what the artifact is, and what goes into the PR record.
-The verdict wording (충족 / 미충족 / 미검증) and template come from
-`~/.agents/skills/agent-loop/references/acceptance-criteria.md`.
+필요한 관찰을 가장 직접적으로 제공하는 경로를 고른다. 모두 실행할 필요는 없다. `implement`와 `verify`가 함께 사용하며 판정·대상·재사용은 공통 `agent-loop/references/verification.md`를 따른다.
 
-## Existing or new tests (surface `none`, `api`, `db` — invisible claims)
+| 조건 | 경로 | 필요한 근거 |
+|---|---|---|
+| 도메인·서버·순수 함수 | 프로젝트 runner의 기존 테스트 | 조건을 확인한 테스트·assertion, 입력·실행 결과 |
+| API 응답·저장 | local/dev API 요청 | 요청·응답과 필요한 저장 결과. 호출 대상·권한 확인 |
+| 보이는 상태·배치 | 브라우저·기기의 직접 관찰 또는 spec | 대상 화면·재현 경로·관찰 결과. 필요하면 screenshot |
+| 전환·재진입·시간에 따른 동작 | 실제 조작 또는 반복 가능한 flow | 조작 전제·행동·기대한 결과와 실제 결과. 시간 흐름이 필요하면 영상 |
+| 사람이 적용하는 마이그레이션 | 적용 후 해당 환경의 검사 | 적용 전에는 미검증과 필요한 사람 작업 |
 
-```bash
-pnpm test <path>            # never vitest / npx vitest directly: the runner boots the test DB
-```
+## 테스트와 API
 
-- Use an existing test when it already asserts the claim; quote the test name and its assertion line.
-- Writing a new test is a separate decision from verifying. Write one when the claim is cheap to express as a
-  test and would otherwise need a manual API call every round. Put it next to the code under test, following
-  the project's existing test layout.
-- Evidence: the runner's summary line plus the named test's status. Keep the excerpt under ten lines.
-- A DB-behaviour claim (constraint, uniqueness, cascade) is proven by a test against the test database, not by
-  reading the schema file.
+- doko 테스트는 `pnpm test <path>`다. runner가 테스트 DB를 준비하므로 vitest를 직접 부르지 않는다.
+- 기존 테스트가 조건을 직접 확인하면 재사용한다. 새로운 테스트는 회귀 위험·반복 확인의 가치가 있을 때 작성한다. `verify`의 새 파일은 임시 하네스에 두며 제품 소스를 고치지 않는다.
+- DB 제약·중복·cascade는 실제 허용된 테스트 DB에서 확인한다. schema를 읽는 것만으로 충족 처리하지 않는다.
+- API 요청은 입력·status·body를 남기고 저장 조건이면 행을 읽어 확인한다. 접속 대상과 DB 쓰기는 프로젝트 지침을 따른다. 쿠키·토큰은 증거에 노출하지 않는다.
 
-## API request (surface `api`)
+## UI와 before
 
-Start the set's API (`dev-servers.sh`), then call it with the exact input the claim describes:
+- 화면의 텍스트·배치는 직접 확인할 수 있다. 저장·권한·중복 방지는 화면 캡처만으로 증명하지 않는다.
+- 명시 비교 요청·회귀 수정·변경 귀속을 확인할 때 같은 조건의 base/head 비교를 사용한다. 다른 경우 head 관찰로 충분하면 불필요한 base 환경·영상을 만들지 않는다.
+- base에서도 조건이 성립하면 이를 그대로 적는다. 결과가 같은 것이 올바른 내부 리팩터라면 픽셀 차이를 요구하지 않는다.
+- 반복 가능한 web spec은 `web-playwright.md`, 앱 flow는 `app-argent.md`를 읽는다. 일회성 직접 관찰에 재생 흐름 작성을 의무화하지 않는다.
 
-```bash
-curl -sS -X POST http://localhost:4000/<route> -H 'content-type: application/json' -d @input.json | tee response.json
-```
+## 실패
 
-- Evidence: the request (method, path, body with secrets removed), the response status and body, and when the
-  claim is about persistence, the row read back. Read rows through an existing read-only script in
-  `packages/scripts` or a `SELECT` against the **local** database only.
-- Auth-required routes: reuse the session cookie from the storage-state file (`web-playwright.md`), sent as
-  `-H 'cookie: …'`. Never paste the cookie into the PR record.
-- Base comparison for API claims: run the same request against the base set (port 4100) when the claim says
-  the behaviour is new or changed. Two identical responses mean the claim does not depend on this change —
-  record it, do not hide it.
-
-## Web state claim (surface `doko`, `admin`)
-
-One spec with one `test` per claim. The assertion is `expect(locator).toBeVisible()` /
-`toHaveText()` / `toHaveCount()` on head. Take `page.screenshot()` at the same route, viewport and scroll
-position on both sets; the pair goes into the record as `kind: "pair"`.
-
-A new screen has no before: after-only, `kind: "image"`, and say «신규 화면» in the item.
-
-## Web transition claim (surface `doko`, `admin`)
-
-One spec, one `test`. The flow performs the action; the assertion waits for the result state with a timeout
-matching the pass criterion. Screenshots at named points (`before-action`, `action`, `result`) come from the
-spec itself — they are deterministic; extracting frames from the video is the fallback. The run's video is
-attached as `kind: "video"`. Run on head and on base; apply the verdict matrix in SKILL.md [2].
-
-Details, config and commands: `web-playwright.md`.
-
-## App claim (surface `doko-app`)
-
-Record the flow once with argent's flow tools while exploring, then replay it with `argent flow run`.
-Screen recording wraps the replay and produces the mp4. Details: `app-argent.md`.
-
-The base comparison for app flows needs the dev client pointed at the base worktree's Metro (port 8082).
-When that is not practical, record head-only and write «before 비교 생략: <이유>» on the item; the flow's
-assertion still carries the verdict on head.
-
-## Human-applied migration (surface `db`)
-
-The agent never applies it. Until the human has, every claim depending on the migration is 미검증 with
-`이유: 마이그레이션 <file> 적용 대기`. After the human applies it, rerun only the affected claims.
-
-## When a route is unavailable
-
-State the missing piece (`check-env.sh` names it), record 미검증 with that reason, and continue with the other
-claims. Do not substitute a weaker route silently — a typecheck is not a fallback for a flow.
+- 실행이 정상이고 약속한 결과가 나타나지 않으면 미충족이다. timeout도 조건 자체의 시간 제한을 어긴 것인지 환경·러너 실패인지 구분한다.
+- 환경·로그인·도구가 실행을 막으면 실제 오류를 근거로 미검증을 남긴다. 일시 오류의 원인이 확인되면 제한된 재시도는 가능하지만 assertion을 느슨하게 바꾸지 않는다.
+- 경로가 막히면 영향 없는 조건을 계속 확인한다. 다른 경로로 충분한 증거를 얻을 수 있으면 사용하고 무엇을 관찰했는지 밝힌다.

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Starts or stops one port set of dev servers so the same spec can run against head and base.
+# 같은 spec으로 head와 base를 비교할 수 있도록 서버 포트를 분리한다.
 #
-#   usage: dev-servers.sh start <head|base> <checkout-dir> <app>...    apps: api doko admin doko-app
+#   사용법: dev-servers.sh start <head|base> <checkout-dir> <app>...    앱: api doko admin doko-app
 #          dev-servers.sh stop  <head|base>
 #          dev-servers.sh status
 #
-#   ports  head: api 4000 · doko 3000 · admin 3001 · metro 8081
+#   포트   head: api 4000 · doko 3000 · admin 3001 · metro 8081
 #          base: api 4100 · doko 3100 · admin 3101 · metro 8082
 #
-# A web app is started with VITE_API_BASE_URL pointing at its own set's API, so start `api` in the same
-# set first (or in the same call — order below is api, then web). Logs and pids live under
-# <main-root>/.e2e/servers/<set>/ so `stop` works from any checkout.
+# 웹 앱의 VITE_API_BASE_URL은 같은 세트의 API를 가리키므로 api를 먼저 시작한다.
+# 한 번에 여러 앱을 지정해도 api부터 시작한다. 로그와 PID는 명령을 실행한 체크아웃의
+# .e2e/servers/<set>/에 저장하므로 stop도 그 체크아웃에서 호출한다.
 set -uo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
@@ -34,12 +34,18 @@ wait_http() {
 }
 
 start_one() {
-  local set=$1 dir=$2 app=$3 p api log pidf
+  local set=$1 dir=$2 app=$3 p api log pidf startedf dirf pid
   p=$(port "$set" "$app") || return 1
   api=$(port "$set" api)
   mkdir -p "$STATE/$set"
   log="$STATE/$set/$app.log"; pidf="$STATE/$set/$app.pid"
+  startedf="$STATE/$set/$app.started"; dirf="$STATE/$set/$app.dir"
+  dir=$(cd "$dir" && pwd -P) || return 1
   if [ -f "$pidf" ] && kill -0 "$(cat "$pidf")" 2>/dev/null; then
+    pid=$(cat "$pidf")
+    if [ ! -s "$startedf" ] || [ "$(ps -p "$pid" -o lstart=)" != "$(cat "$startedf")" ] || [ "$(cat "$dirf" 2>/dev/null)" != "$dir" ]; then
+      echo "server ownership or checkout differs; preserve the running process" >&2; return 1
+    fi
     echo "$app already running (set $set, port $p)"; return 0
   fi
   if lsof -ti "tcp:$p" >/dev/null 2>&1; then
@@ -51,6 +57,9 @@ start_one() {
     admin)    (cd "$dir/apps/admin" && VITE_API_BASE_URL="http://localhost:$api" nohup pnpm exec vite dev --port "$p" --strictPort >"$log" 2>&1 & echo $! >"$pidf") ;;
     doko-app) (cd "$dir/apps/doko-app" && CI=1 nohup pnpm exec expo start --port "$p" >"$log" 2>&1 & echo $! >"$pidf") ;;
   esac
+  pid=$(cat "$pidf")
+  ps -p "$pid" -o lstart= > "$startedf"
+  printf '%s\n' "$dir" > "$dirf"
   if wait_http "http://localhost:$p/"; then
     echo "$app up: http://localhost:$p  (log: $log)"
   else
@@ -59,18 +68,26 @@ start_one() {
 }
 
 stop_set() {
-  local set=$1 app p pidf pid
+  local set=$1 app p pidf pid startedf rc=0
   for app in api doko admin doko-app; do
     p=$(port "$set" "$app")
     pidf="$STATE/$set/$app.pid"
+    startedf="$STATE/$set/$app.started"
     if [ -f "$pidf" ]; then
       pid=$(cat "$pidf")
-      pkill -P "$pid" 2>/dev/null; kill "$pid" 2>/dev/null
-      rm -f "$pidf"
+      if [ -s "$startedf" ] && [ "$(ps -p "$pid" -o lstart= 2>/dev/null)" = "$(cat "$startedf")" ]; then
+        pkill -P "$pid" 2>/dev/null; kill "$pid" 2>/dev/null
+        rm -f "$pidf" "$startedf" "$STATE/$set/$app.dir"
+      elif kill -0 "$pid" 2>/dev/null; then
+        echo "$app ownership is unknown; process preserved" >&2
+        rc=1
+      else
+        rm -f "$pidf" "$startedf" "$STATE/$set/$app.dir"
+      fi
     fi
-    lsof -ti "tcp:$p" 2>/dev/null | xargs -r kill 2>/dev/null
   done
-  echo "set $set stopped"
+  if [ "$rc" = 0 ]; then echo "set $set stopped"; else echo "set $set has preserved processes" >&2; fi
+  return "$rc"
 }
 
 status() {
@@ -88,9 +105,8 @@ case "$cmd" in
   start)
     set=${1:?set (head|base)}; dir=${2:?checkout dir}; shift 2
     [ $# -gt 0 ] || { echo "no apps given" >&2; exit 1; }
-    # api first so a web app in the same call finds its API.
-    for app in "$@"; do [ "$app" = api ] && start_one "$set" "$dir" api; done
     rc=0
+    for app in "$@"; do [ "$app" = api ] && { start_one "$set" "$dir" api || rc=1; }; done
     for app in "$@"; do [ "$app" = api ] || start_one "$set" "$dir" "$app" || rc=1; done
     exit $rc ;;
   stop)   stop_set "${1:?set (head|base)}" ;;

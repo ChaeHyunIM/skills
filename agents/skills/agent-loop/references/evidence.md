@@ -1,9 +1,11 @@
 # Evidence behind the agent-loop rules
 
-Where the rules in `CONTRACT.md` and the four skills came from. Read this **only when a rule is in
+Where the rules in `CONTRACT.md` and the five skills came from. Read this **only when a rule is in
 doubt** — a normal run does not need it.
 
-Everything here is measured. Do not re-investigate these conclusions.
+Separate the observed result from the proposed cause. Dates and runtime/model versions absent below
+were not recorded; do not infer them. Revisit environment-dependent workarounds when the relevant runtime,
+repository setup or observed behavior changes. Preserve protections until an alternative is verified.
 
 ## Contents
 
@@ -69,8 +71,8 @@ left out, and the body one went stale once blockers landed. The edge is now the 
 
 ## Worktrees and environment
 
-**Running `claude -p` inside a worktree deletes that worktree on exit**
-Measured via `/review-round`. Commits survive; only the checkout disappears. Hence pushing before the
+**A review run of `claude -p` removed its worktree on exit (runtime version not recorded)**
+Observed via `/review-round`; this is not established for every CLI version. Commits survived; only the checkout disappeared. Hence pushing before the
 review is mandatory. Recovery: `git worktree prune` → `worktree add` → `pnpm install` → copy routeTree
 (for every app that has one).
 
@@ -83,20 +85,20 @@ Currently resolved by folding route generation into the turbo task.
 
 ## Verification
 
-**Verifying inside `implement` produced no evidence**
-`implement`'s step 7 used to call `verify` at the end of the implementation session. PR #375 (2026-09-09)
-came back with every condition 미검증 and the reason «이전 iOS 시뮬레이터 앱 실행 시도가 실패했으며, 미설치
-여부는 확정하지 못함» — while `verify/scripts/check-env.sh` on the same machine reported argent 0.24.0
-installed and one simulator booted. The check was never run: by step 7 the session had spent its budget on
-the ticket, the worktree and the code, and the most expensive route (device flow, base worktree, quality
-gates) sat at the point of least context. Hence `verify` is a human-fired step on the open PR, in a fresh
-context, and the record is gated by sha rather than by a promise inside `implement`.
+**An implementation run reported unverified conditions without checking the environment**
 
-**A record nobody compared with the head went stale silently**
-The record header already carried `검증 대상: <sha>`; nothing read it back. Rework and review rounds
-pushed commits on top and the block stayed, so a reader saw 충족 lines about code that no longer existed.
-`land` now reads `verified-head.sh` instead of assessing staleness by hand and puts anything but `current`
-into its existing single confirmation, and merge commits alone (a base sync) do not count as drift — the
-same rule `land` already used for `REVIEWED_HEAD`. It asks rather than refuses: a hard gate would have made
-`verify` a fifth mandatory command, and a mandatory step with a cost is the shape that produced the
-skipping above.
+- Observed: PR #375 (2026-09-09) reported every condition 미검증, saying simulator installation was uncertain. The environment check on the same machine reported argent 0.24.0 and one booted simulator. That check had not been run in the implementation session.
+- Hypothesis at the time: the expensive verification route was reached after the coding context budget had been spent. The model, token budget and comparative runs were not recorded; the cause was not isolated.
+- Current rule: implement performs the necessary checks and records actual evidence. Verify is an optional continuation for remaining conditions or independent rechecks. Missing evidence must not be filled with an invented environment explanation.
+- Revisit: if implementation again stops without trying an available route, inspect the actual failing step and context before adding a universal stopping rule.
+
+**A record with a SHA became stale because nobody compared it with the PR head**
+
+Rework and review rounds added commits while the PR retained old 충족 lines. The comparison helper was introduced so land could expose the gap rather than treating old results as current.
+
+**The merge-only exemption and range-count implementation disagreed (2026-09-14)**
+
+- Observed in a temporary Git repository with the original helper and stubbed GitHub response: exact head returned current; a PR head rolled back to an ancestor also returned current; merging a new ordinary base commit returned stale despite the documented exemption.
+- Cause: `rev-list --no-merges old..head` counts reachable base commits and does not prove equality or ancestry. A merge commit also does not prove unchanged runtime behavior.
+- Current rule: current requires exact commit equality. Stale reports a symmetric commit count without implying chronological distance. Implement and verify evaluate condition-level evidence; land requires informed approval for any remaining gap.
+- Revisit only with tests covering equality, rollback, divergence, base integration and conflict-resolution changes.

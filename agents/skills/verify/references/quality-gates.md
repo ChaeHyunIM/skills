@@ -1,35 +1,17 @@
-# Quality gates: when an artifact does not count
+# 근거가 조건을 설명하는지 확인
 
-Apply to every screenshot, video, report and response before it enters `results.json`. A rejected artifact is
-re-captured with the named fix; the rejection stays in the session log (count and reasons in the report).
+사용할 증거에 관련된 항목만 확인한다. 첫 실행 성공이나 매체 수 자체를 이유로 재검증하지 않는다.
 
-## Reject the artifact
+| 관찰 | 처리 |
+|---|---|
+| 로그인 화면·다른 route·로딩 중 캡처 | 실제 대상에 도달한 뒤 관찰하거나 실행 장애를 기록 |
+| 에러 overlay·앱 crash | 요청한 동작이 실패한 것인지 환경이 실행을 막은 것인지 구분하고 실제 결과를 기록 |
+| 비교 쌍의 viewport·스크롤·theme가 다름 | 차이를 판단해야 하는 비교라면 조건을 맞춰 다시 관찰 |
+| before/after가 같음 | 변경의 의미를 확인. 보존 조건·내부 리팩터면 정상일 수 있음 |
+| 검사 코드·head·서버·환경이 기록 대상과 다름 | 그 결과를 현재 PR 증거로 쓰지 말고 올바른 대상에서 확인 |
+| assertion을 느슨하게 해야 통과함 | 원래 조건을 보존하고 실패 또는 조건 결정 필요를 보고 |
+| 재시도 후 통과함 | 재시도 이유·횟수와 불안정성을 기록. 실패를 숨기지 않음 |
+| 검사용 데이터가 남음 | 허용된 테스트 데이터만 정리하고 이후 실행을 오염시키지 않음 |
+| 영상이 길거나 첨부 제한을 넘음 | 필요한 구간만 남기거나 해상도를 조정. 영상이 불필요하면 캡처·실행 결과로 설명 |
 
-| Sign | Why it fails | Fix |
-|---|---|---|
-| Login page, landing page or a route different from the claim's | wrong state | storage state expired → human re-login; or the route/base URL is wrong |
-| Blank frame, loading skeleton, spinner in the «결과» still | captured too early | assert the result element first, screenshot after |
-| Vite error overlay, wrangler error page, React error boundary | the app crashed, not the claim | fix or record 미검증 with the error |
-| before and after pixel-identical while the claim says something changed | no evidence of change | wrong route/state, or the change is not on this surface — investigate, do not attach |
-| Pair captured at different viewport, zoom, scroll or theme | not comparable | same `--project`, same `goto`, same scroll, both sets |
-| Screenshot or video shows a token, cookie, auth query string, storage-state path or `.env` value | leak | recapture with the value hidden; never crop a leak out after upload |
-| Video over the attachment cap or longer than ~60 s | will not upload / covers too much | split the flow per claim, shorten, reduce viewport |
-| Video where nothing moves (a static page recorded) | should be a still | change the evidence type to `image` |
-| Report from a commit other than the PR head | stale | rerun after `git rev-parse HEAD` matches the PR head |
-
-## Question the verdict
-
-| Sign | What it means | Do |
-|---|---|---|
-| Flow passes on base too | the claim does not depend on this change | 충족 with «base 에서도 성립»; tell the user the claim may be misattributed |
-| Flow passes on head only after a retry | flaky assertion or timing | if the second run passes, record it and note «1회 재시도»; a third failure is 미검증 |
-| Assertion had to be loosened to pass | you are fitting the claim to the code | revert the loosening; report 미충족 or ask |
-| Test data created by the flow was not cleaned up | pollutes later runs | add cleanup to the spec before publishing |
-| Every claim is 충족 on the first try with no rejection | possible, but check the pass criteria were written before the run | re-read [2]; if any criterion was written after, rerun that claim |
-
-## Never publish
-
-- Storage-state files, `.env*`, cookies, bearer tokens, signed URLs.
-- Media of production data that identifies a real user, unless the claim is about that surface and the
-  user approved.
-- A block that replaces PR prose outside the `verify` markers.
+토큰·쿠키·인증 query·storage-state·환경 값과 식별 가능한 실제 사용자 데이터는 게시하지 않는다. 노출을 발견하면 업로드 전에 안전한 새 근거를 만든다. 검증 마커 밖의 PR 글을 바꾸는 결과는 게시하지 않는다.

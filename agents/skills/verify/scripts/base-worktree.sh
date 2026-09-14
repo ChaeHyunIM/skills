@@ -1,30 +1,27 @@
 #!/usr/bin/env bash
-# Detached worktree at the base commit, ready to run dev servers, so "before" is the real base.
-#
-#   usage: base-worktree.sh <base-branch>    prints the worktree path on stdout (progress on stderr)
-#          base-worktree.sh --remove         removes every verify-base worktree
-#
-# Uses the LOCAL branch (CONTRACT: the user's unpushed base commits are usually the prerequisite).
-# Copies gitignored files the servers need: routeTree.gen.ts and the env files. Env files are copied
-# byte-for-byte and never printed.
 set -euo pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
+ROOT=$(cd "$ROOT" && pwd -P)
 
 if [ "${1:-}" = "--remove" ]; then
-  for wt in "$ROOT"/.claude/worktrees/verify-base-*; do
-    [ -d "$wt" ] || continue
-    git -C "$ROOT" worktree remove --force "$wt" && echo "removed $wt" >&2
-  done
-  git -C "$ROOT" worktree prune
+  wt=${2:?name the worktree created by this verification run}
+  wt=$(cd "$wt" && pwd -P)
+  case "$wt" in "$ROOT"/.claude/worktrees/verify-base-*) ;; *) echo "not a verification worktree in this repository" >&2; exit 3;; esac
+  script_dir=$(cd "$(dirname "$0")" && pwd)
+  bash "$script_dir/../../agent-loop/scripts/check-worktree.sh" "$wt" >/dev/null
+  git -C "$ROOT" worktree remove "$wt"
+  echo "removed $wt" >&2
   exit 0
 fi
 
-BASE="${1:?usage: base-worktree.sh <base-branch> | --remove}"
-SHA=$(git -C "$ROOT" rev-parse --verify --short "$BASE^{commit}")
+BASE="${1:?usage: base-worktree.sh <base-ref> | --remove <path>}"
+SHA=$(git -C "$ROOT" rev-parse --verify "$BASE^{commit}")
 WT="$ROOT/.claude/worktrees/verify-base-$SHA"
 
 if [ -d "$WT" ]; then
+  script_dir=$(cd "$(dirname "$0")" && pwd)
+  bash "$script_dir/../../agent-loop/scripts/check-worktree.sh" "$WT" "$SHA" >/dev/null
   echo "reusing $WT" >&2
 else
   git -C "$ROOT" worktree add --detach "$WT" "$SHA" >&2
@@ -36,7 +33,7 @@ copied=0
 for src in "$ROOT"/apps/*/src/routeTree.gen.ts; do
   [ -f "$src" ] || continue
   dst="$WT/${src#"$ROOT"/}"
-  [ -d "$(dirname "$dst")" ] || continue          # the base may predate this app
+  [ -d "$(dirname "$dst")" ] || continue          # base에는 아직 이 앱이 없을 수 있다.
   cp "$src" "$dst"; copied=$((copied+1))
 done
 

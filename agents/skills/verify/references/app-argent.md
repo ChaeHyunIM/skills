@@ -1,5 +1,7 @@
 # App flows with argent
 
+Read this for repeatable device flows or requested recordings. One-off device observations may use the available device tools directly with a reproducible path and actual result. Recording is optional when it adds no evidence. In a verify-only run, use a temporary project root for new flows; do not overwrite committed flows.
+
 `argent` (`@swmansion/argent`, on PATH at `/opt/homebrew/bin/argent`) drives the iOS simulator, records a
 flow while the model explores, replays it without a model, and records the screen as H.264 mp4 at 30 fps.
 List tools with `argent tools`, details with `argent tools describe <name>`.
@@ -51,5 +53,4 @@ at the echo points.
 
 ## Where flows live
 
-`.argent/flows/verify/<claim-slug>.yaml` in the repo, committed with the PR like a web spec. Screenshots,
-recordings and reports under `.e2e/` (gitignored).
+Existing committed flows stay in `.argent/flows/verify/`. New flows from `verify` stay in a temporary project root or an already ignored artifact directory. `implement` may include a regression flow in the PR and then verify the final head. Screenshots, recordings and reports stay in `.e2e/` only when it is already gitignored.

@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Runs Claude and Codex reviewers concurrently for one pinned review round.
-#
-# usage: run-reviewers.sh <worktree> <issue> <round> <comparison-ref> <head> \
-#          <codex-model> <effort> <scratch-dir> [normalized Claude /code-review args...]
 set -u
 
 if [ "$#" -lt 8 ]; then
@@ -36,6 +32,7 @@ if [ "$ACTUAL_HEAD" != "$EXPECTED_HEAD" ]; then
   echo "worktree head changed before review: expected=$EXPECTED_HEAD actual=$ACTUAL_HEAD" >&2
   exit 4
 fi
+bash "$SCRIPT_DIR/../../scripts/check-worktree.sh" "$WORKTREE" "$EXPECTED_HEAD" >/dev/null || exit $?
 
 CLAUDE_JSONL="$SCRATCH/review-${N}-r${K}.jsonl"
 CLAUDE_ERR="$SCRATCH/review-${N}-r${K}.err"
@@ -64,8 +61,7 @@ trap 'terminate_children; exit 130' INT TERM HUP
 (
   set +e
   (
-    # claude -p reads piped stdin as extra input; a harness exec session keeps the pipe open
-    # forever, so detach stdin the same way the Codex helper does.
+    # 실행 환경이 stdin 파이프를 닫지 않으면 Claude가 추가 입력을 기다리므로 입력을 분리한다.
     cd "$WORKTREE" &&
       CLAUDE_CODE_REPORT_FINDINGS=1 claude -p "$CLAUDE_PROMPT" \
         --output-format stream-json --verbose </dev/null
@@ -111,6 +107,7 @@ if [ "$ACTUAL_HEAD" != "$EXPECTED_HEAD" ]; then
   echo "worktree head moved during review: expected=$EXPECTED_HEAD actual=$ACTUAL_HEAD" >&2
   exit 4
 fi
+bash "$SCRIPT_DIR/../../scripts/check-worktree.sh" "$WORKTREE" "$EXPECTED_HEAD" >/dev/null || exit $?
 
 if [ "$CLAUDE_WAIT" -ne 0 ] || [ "$CODEX_WAIT" -ne 0 ]; then
   echo "reviewer failed: Claude=$CLAUDE_WAIT Codex=$CODEX_WAIT" >&2

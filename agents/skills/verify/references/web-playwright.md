@@ -1,10 +1,12 @@
 # Web flows with Playwright
 
-Two layers, one engine. **Exploration** is model-driven through the Playwright MCP (accessibility snapshots,
-recorded actions come back as Playwright code). **Evidence** is a `@playwright/test` spec replayed without a
-model, against the head set and the base set. Same engine, so what you saw while exploring is what the spec does.
+Use this when a repeatable web spec adds regression value or the user requests one. One-off browser
+observations can be evidence with a reproducible route and actual result; they do not require this workflow.
+Reuse the configured browser tool and existing Playwright setup. Do not install persistent configuration
+from a verification-only run. Put new verification harness files in an already ignored artifact directory
+or a temporary workspace; `implement` can later include an approved regression test in the PR.
 
-## Repo layout (installed by `check-env.sh --install-config`)
+## Existing repo layout (installation belongs to implementation)
 
 ```
 playwright.config.ts          root; testDir apps/, matches apps/*/e2e/*.spec.ts
@@ -13,7 +15,7 @@ apps/<app>/e2e/<claim>.spec.ts
 ```
 
 Env read by the config: `E2E_BASE_URL` (default `http://localhost:3000`), `E2E_STORAGE_STATE` (optional),
-`E2E_OUT` (results dir, default `.e2e/results`). Video and trace are always on; JSON report at
+`E2E_OUT` (results dir, default `.e2e/results`), `E2E_TEST_DIR` (optional temporary harness directory). Set `E2E_VIDEO=1` only when motion is useful evidence. Trace is retained on failure; JSON report at
 `$E2E_OUT/report.json`.
 
 ## Login: storage state saved by a human
@@ -53,11 +55,11 @@ Flow:
    the named screenshots and the assertion timeout.
 
 Chrome MCP (Claude Code only) can substitute for step 1 when the Playwright MCP is not installed, but it emits no
-code, so the spec is written from the snapshot by hand. Its GIF is never evidence.
+code, so the spec is written from the snapshot by hand. A direct observation is labeled as such; author a replayable spec only when it adds value.
 
 ## Authoring the spec
 
-One `test` per claim. Skeleton (`templates/example.spec.ts` is the full version):
+Keep assertions traceable to the conditions they cover. A short flow may cover related conditions. Skeleton (`templates/example.spec.ts` is the full version):
 
 ```ts
 import { test, expect } from "@playwright/test";
@@ -86,21 +88,21 @@ test("이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 
 # head
 E2E_BASE_URL=http://localhost:3000 E2E_STORAGE_STATE=.e2e/storage-state/doko.json E2E_OUT=.e2e/results/head \
   pnpm exec playwright test apps/doko/e2e/<claim>.spec.ts --project=chromium
-# base — same spec file from the main checkout, only the URL changes
+# base — only when comparison is needed; same spec, different verified target URL
 E2E_BASE_URL=http://localhost:3100 E2E_STORAGE_STATE=.e2e/storage-state/doko.json E2E_OUT=.e2e/results/base \
   pnpm exec playwright test apps/doko/e2e/<claim>.spec.ts --project=chromium
 ```
 
 Read `$E2E_OUT/report.json`: `suites[].specs[].tests[].results[].status` is `passed` / `failed` / `timedOut`.
 `admin` has no `VITE_API_BASE_URL` (its client code was not found reading one), so a base `admin` server may
-still talk to the head API — check `apps/admin` before trusting an admin before/after. A `timedOut` on head is retried once; a second timeout is 미검증 with «assertion 타임아웃 (<n> ms)», not 미충족.
+still talk to the head API — check `apps/admin` before trusting an admin before/after. A timeout violating the agreed behavior is 미충족; a runner or environment timeout is 미검증. Retry only when the observed cause justifies it and report the retry.
 
 A base run that **fails to reach the action** (button absent, route 404) is «unreachable» in the matrix and
 counts as before-fails. Quote the failing step.
 
 ## Media for the PR
 
-Per test, Playwright writes `video.webm`, `trace.zip` and the named screenshots into
+Depending on the selected capture settings, Playwright writes video, trace and screenshots into
 `$E2E_OUT/<test-dir>/`. Copy what the record needs into `.e2e/evidence/<run>/` with short, whitespace-free
 names (`claim-2-head.mp4`, `claim-2-before-action.png`, …).
 
@@ -123,9 +125,9 @@ Two-step video table (only when a before/after **video** pair is worth a side-by
    `evidence-block.mjs` then emits a `<table>` of `<video>` cells instead of own-line videos.
 4. Re-read the published PR body; only then delete the temporary comment.
 
-Default is simpler: head video on its own line, base video omitted or on its own line below it.
+When video is needed, put the head video on its own line; a base video is optional unless comparison was requested.
 
 ## Verdict, then write results.json
 
-Fill `results.json` (schema in `scripts/evidence-block.mjs`) from the two reports and the pass criterion.
+Fill `results.json` (schema in `scripts/evidence-block.mjs`) from the actual runs and pass criterion. A base report is needed only when comparison was requested or necessary.
 `detail` for 충족 names the spec and the assertion; for 미충족 the expected vs actual; for 미검증 the cause.

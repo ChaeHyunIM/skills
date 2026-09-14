@@ -1,81 +1,23 @@
-# Ticket slicing rules
+# 티켓 분할 기준
 
-Read this when drawing slices in `to-tickets` step 4. The incidents behind these rules are in
-`~/.agents/skills/agent-loop/references/evidence.md`.
+여러 작업을 나눌 때 읽는다. 사고 배경은 필요할 때만 `agent-loop/references/evidence.md`를 읽는다.
 
-## Contents
+## 완결된 결과
 
-- [Vertical slices](#vertical-slices)
-- [Blocking edges must be soft](#blocking-edges-must-be-soft)
-- [Dependencies point down only](#dependencies-point-down-only)
-- [Migrations hoist](#migrations-hoist)
-- [Wide refactors are the exception](#wide-refactors-are-the-exception)
+- 기본 단위는 사용자에게 보이는 흐름이다. API·관리자·앱 화면을 합쳐야 하나의 동작이 완성된다면 같은 티켓으로 묶는다. backend·schema·infra는 개발자가 관찰할 수 있는 완결된 결과를 기준으로 삼는다.
+- 독립 머지는 **승인된 선행 티켓이 머지된 상태**에서 제품이 일관되고 자기 결과를 검증할 수 있다는 뜻이다. 출발 당시 base에서 모든 후속 티켓이 컴파일돼야 한다는 뜻이 아니다.
+- B가 A의 새 schema·API·타입을 사용한다면 A를 blocker로 걸고 A가 머지된 뒤 B를 구현한다. 이것만으로 둘을 합치지 않는다.
+- A도 B 없이는 깨지고 B도 A 없이는 깨지는 순환 의존, 한쪽만 머지하면 약속한 기능의 반쪽만 남는 분할은 합치거나 호환 단계로 다시 자른다.
 
-## Vertical slices
+## 병렬 작업과 의존
 
-- **The unit of a slice is a FLOW** — one user-facing behaviour owned end to end, across every surface it
-  touches (API, admin, app UI, web). Never split one flow across tickets by screen or by layer. A screen
-  is a natural boundary only when exactly one flow lives there.
-  The canonical mistake is splitting an auth-style flow into "API ticket / admin ticket / UI ticket /
-  badge ticket": every fragment touches the same modules and none is demoable alone.
-- Each slice cuts a **narrow but complete** path through every layer (schema, API, UI) — vertical, not a
-  horizontal slice of one layer.
-- A completed slice is demoable or verifiable on its own, and **merging it alone leaves the product
-  consistent** — no orphaned entry points, no dangling references, no surface left "temporarily unused"
-  until a sibling lands.
-- Prefer one big ticket that owns a whole flow over small tickets that share one. Context-window sizing is
-  secondary: a flow fragment that fits neatly is worth less than a complete flow that runs long.
-- Any prefactoring is done first.
+- 같은 모듈·화면을 건드린다는 사실은 충돌 위험을 살필 신호다. 수정 범위가 분리되고 결과가 독립적이면 반드시 합칠 필요는 없다.
+- blocker 없는 티켓은 동시에 구현해도 계약·상태 변경이 충돌하지 않는지 확인한다. 실제 선행 의존은 네이티브 엣지로 표시하고, 단순 파일 중복을 제품 의존으로 꾸미지 않는다.
+- 필요한 목적지·심볼·API는 자기 diff나 이미 머지된 blocker에 있어야 한다. 나중 티켓의 아직 없는 계약을 참조하지 않는다.
+- 목적지를 만드는 티켓이 진입점도 연결한다. 앞 티켓에서 아직 없는 화면으로 이동하는 버튼을 활성화하지 않는다. 임시 비활성화가 기존 동작을 없애는 경우 프로젝트의 삭제·정책 경계를 먼저 확인한다.
 
-## Blocking edges must be soft
+## 마이그레이션과 넓은 리팩터
 
-A blocking edge is **soft**: B builds on A's *merged* result, but each ticket is merge-consistent alone.
-
-**A hard edge is not a dependency — it is one ticket cut in two. Fuse them.** An edge is hard when:
-
-- merging B alone breaks the product,
-- B cannot compile until A lands,
-- A and B edit the same feature surface.
-
-Litmus test: if you can already foresee the PR body saying "머지 순서 강제 — 먼저 머지하지 말 것",
-"#X 머지 후 한 줄만 추가하면 닫힌다", or "이 diff 에서는 잠깐 소비처가 없다", the cut is wrong.
-
-**The published set must be parallel-safe.** Tickets are implemented by concurrent agents in isolated
-worktrees that know nothing of each other, so any two tickets not connected by a blocking edge must be
-safe to implement simultaneously: no shared feature surface (the same domain modules, data layer, or
-screen), and neither consumes a contract the other introduces.
-
-## Dependencies point down only
-
-Every route a ticket links to, symbol it imports, endpoint it calls must exist in **its own diff or in a
-blocker's**. A dependency pointing at a *later* ticket cannot be sequenced away.
-
-The concrete trap is an entry point without its destination: the tile, the chevron, the button that
-navigates somewhere the next ticket will build. **Whoever builds the destination also wires the entry
-point**; the earlier ticket renders it inert.
-
-## Migrations hoist
-
-Parallel tickets that each add a migration collide on the serial journal, and the collision is invisible
-as text — only the apply order breaks.
-
-When more than one slice needs schema changes, **hoist all schema work into a single preceding schema
-ticket** that the flow tickets block on (a soft edge — the schema ticket merges alone), leaving the flow
-tickets migration-free.
-
-## Wide refactors are the exception
-
-A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast
-radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no
-vertical slice can land green.
-
-Don't force it into a tracer bullet; sequence it as **expand–contract**:
-
-1. **expand** — add the new form beside the old so nothing breaks.
-2. **migrate** — move call sites over in batches sized by blast radius (per package, per directory). Each
-   batch is its own ticket blocked by the expand, and CI stays green batch to batch because the old form
-   still exists.
-3. **contract** — delete the old form once no caller remains, in a ticket blocked by every migrate batch.
-
-When even the batches can't stay green alone, keep the sequence but let them share an integration branch
-that all block a final integrate-and-verify ticket — green is promised only there.
+- 여러 병렬 슬라이스가 schema를 바꾸면 공통 schema를 선행 티켓으로 모아 journal 순서를 조정한다. 각 기능 티켓에 blocker를 건다. 마이그레이션 생성·적용은 프로젝트 지침을 따른다.
+- 넓은 rename·공유 타입 변경은 expand → 소비처 migrate → contract를 기본으로 한다. migrate는 호환성이 유지되는 단위로 나누고 contract는 모든 소비처 전환 뒤에 둔다.
+- 그래도 개별 티켓이 일관된 결과로 머지될 수 없으면 합치거나 통합 브랜치 전략을 사용자와 정한다. 통합 브랜치 예외를 일반 implement의 branch 경계에 조용히 끼워 넣지 않는다.

@@ -1,40 +1,37 @@
 #!/usr/bin/env node
 /**
- * Renders the `## 완료 조건 검증` block for a PR body from results.json, and replaces it in place.
- * Node builtins only. Owns the `<!-- verify:start -->` / `<!-- verify:end -->` markers; everything
- * outside them is preserved byte for byte.
+ * 호출자가 준비하는 results.json의 입력 계약이다. 별도 타입 선언이 없어 선택 필드와 매체 형식을 함께 둔다.
  *
- *   node evidence-block.mjs --results results.json                       → block on stdout
- *   node evidence-block.mjs --results results.json --body-file body.md   → full body with the block replaced
- *   node evidence-block.mjs --results results.json --attach-list         → local media paths, one per line
+ *   node evidence-block.mjs --results results.json                       → 표준 출력에 검증 블록
+ *   node evidence-block.mjs --results results.json --body-file body.md   → 검증 블록을 교체한 전체 본문
+ *   node evidence-block.mjs --results results.json --attach-list         → 로컬 매체 경로를 한 줄씩 출력
  *
  * results.json
  * {
  *   "target": { "commit": "abc1234", "url": "https://github.com/o/r/commit/abc1234" },
- *   "base":   { "branch": "dev", "commit": "def5678" },            // optional
+ *   "base":   { "branch": "dev", "commit": "def5678" },            // 선택 사항
  *   "env":    "로컬 dev 서버 head(3000/4000)·base(3100/4100), Chromium 1280×800",
  *   "items": [
  *     {
- *       "text":   "이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 표시된다",   // verbatim condition
+ *       "text":   "이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 표시된다",   // 완료 조건 원문
  *       "status": "충족",                                                 // 충족 | 미충족 | 미검증
  *       "detail": "apps/doko/e2e/mission-rejoin.spec.ts · head pass / base fail(버튼 없음)",
- *       "note":   "base 에서도 성립",                                      // optional
- *       "media": [                                                        // optional, paths relative to cwd
+ *       "note":   "base 에서도 성립",                                      // 선택 사항
+ *       "media": [                                                        // 선택 사항, 경로는 cwd 기준
  *         { "kind": "pair",  "label": "Desktop", "before": ".e2e/evidence/r1/c2-before.png", "after": ".e2e/evidence/r1/c2-after.png" },
  *         { "kind": "image", "label": "결과",    "file": ".e2e/evidence/r1/c2-result.png" },
  *         { "kind": "video", "label": "head",   "file": ".e2e/evidence/r1/c2-head.mp4" },
  *         { "kind": "video-pair", "label": "Desktop", "before": "…-base.mp4", "after": "…-head.mp4",
- *           "beforeUrl": "https://github.com/user-attachments/assets/…", "afterUrl": "…" }   // urls optional
+ *           "beforeUrl": "https://github.com/user-attachments/assets/…", "afterUrl": "…" }   // URL은 선택 사항
  *       ]
  *     }
  *   ],
- *   "rejected": [ { "reason": "로그인 페이지 캡처", "count": 1 } ]        // optional
+ *   "rejected": [ { "reason": "로그인 페이지 캡처", "count": 1 } ]        // 선택 사항
  * }
  *
- * Media rules (gh --attach): paths inside cwd, no whitespace, images png/jpg/gif/webp, videos mp4/mov/webm.
- * Videos render on their own line so GitHub shows a player. A video-pair renders as an HTML table only when
- * both beforeUrl and afterUrl are present (uploaded through a temporary comment first); otherwise as two
- * own-line videos. Images over 10 MB and videos over 10 MB are refused (free-plan cap).
+ * gh 첨부 경로는 cwd 안에 있어야 하고 공백을 포함할 수 없다. 이미지 png/jpg/gif/webp, 영상 mp4/mov/webm을 받는다.
+ * GitHub가 플레이어로 표시하도록 영상은 독립된 줄에 둔다. video-pair는 업로드한 beforeUrl과 afterUrl이
+ * 모두 있어야 HTML 표로 표시할 수 있다. 첨부 용량은 무료 요금제에 맞춰 각각 10 MB로 제한한다.
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, relative, resolve } from "node:path";
@@ -105,6 +102,13 @@ function renderMedia(m, cwd, out) {
 
 export function renderBlock(results, { cwd = process.cwd() } = {}) {
   if (!Array.isArray(results.items) || results.items.length === 0) throw new Error("results.items must be a non-empty array");
+  if (!/^[0-9a-f]{7,40}$/.test(results.target?.commit ?? "")) throw new Error("results.target.commit must be a Git SHA");
+  if (results.target.url) {
+    const url = new URL(results.target.url);
+    if (url.protocol !== "https:" || !url.pathname.endsWith(`/commit/${results.target.commit}`)) {
+      throw new Error("target URL must identify results.target.commit");
+    }
+  }
   const out = [MARKER_START, HEADING, ""];
   const target = results.target?.url ? `[${results.target.commit}](${results.target.url})` : results.target?.commit;
   if (!target) throw new Error("results.target.commit is required");
@@ -143,29 +147,28 @@ export function attachList(results, { cwd = process.cwd() } = {}) {
 export function replaceBlock(body, block) {
   const start = body.indexOf(MARKER_START);
   const end = body.indexOf(MARKER_END);
+  const headings = [...body.matchAll(/^## 완료 조건 검증[ \t]*\r?$/gm)];
+  if (headings.length > 1) throw new Error("PR body contains more than one `## 완료 조건 검증` section");
   if (start !== -1 && end !== -1 && end > start) {
     if (body.indexOf(MARKER_START, start + MARKER_START.length) !== -1 || body.indexOf(MARKER_END, end + MARKER_END.length) !== -1) {
       throw new Error("PR body contains more than one verify marker block");
     }
-    const prefix = body.slice(0, start).trimEnd();
-    const suffixText = body.slice(end + MARKER_END.length).trim();
-    return [prefix, block.trim(), suffixText].filter(Boolean).join("\n\n") + "\n";
+    if (headings.length !== 1 || headings[0].index < start || headings[0].index > end) {
+      throw new Error("verification heading must be inside the marker block");
+    }
+    // 마커 밖의 공백도 사람의 본문에 속하므로 trim하지 않는다.
+    return body.slice(0, start) + block.trimEnd() + body.slice(end + MARKER_END.length);
   }
   if (start !== -1 || end !== -1) throw new Error("PR body contains an incomplete verify marker block");
 
-  // No markers: take over a hand-written `## 완료 조건 검증` section (implement's template) when there is exactly one.
-  const headings = [...body.matchAll(/^## 완료 조건 검증\s*$/gm)];
-  if (headings.length > 1) throw new Error("PR body contains more than one `## 완료 조건 검증` section");
+  // 기존 수기 기록도 제목이 하나일 때만 같은 섹션으로 인계한다.
   if (headings.length === 1) {
     const from = headings[0].index;
-    const next = body.slice(from + headings[0][0].length).search(/^## /m);
+    const next = body.slice(from + headings[0][0].length).search(/^#{1,2} /m);
     const to = next === -1 ? body.length : from + headings[0][0].length + next;
-    const prefix = body.slice(0, from).trimEnd();
-    const suffixText = body.slice(to).trim();
-    return [prefix, block.trim(), suffixText].filter(Boolean).join("\n\n") + "\n";
+    return body.slice(0, from) + block.trimEnd() + "\n\n" + body.slice(to);
   }
-  const prefix = body.trimEnd();
-  return prefix ? `${prefix}\n\n${block}` : block;
+  return body ? `${body}${body.endsWith("\n") ? "\n" : "\n\n"}${block}` : block;
 }
 
 function main(argv) {
