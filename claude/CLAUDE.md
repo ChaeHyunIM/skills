@@ -4,10 +4,6 @@ Before writing or editing a Workflow script, and before spawning multiple subage
 
 `/code-review` is no exception when it generates a local workflow. Invoke `workflow-tiering` before creating the script and apply the five-stage assignment (Scope · Find · Verify · Sweep · Synthesize) from that skill's `/code-review` section. A level passed by the user (high · xhigh · max) is a **ceiling**, not a flat value for every stage.
 
-## Visual style for published pages
-
-The `html-style` skill holds the typography and icon rules for Artifacts and any standalone HTML page meant to be looked at. It is shared with Codex (where the same feature is called a site), so neither runtime carries its own copy. Apply it **only when the user invokes `/html-style` themselves** — never load it on your own just because the task produces an Artifact or HTML page.
-
 ## Creating a new skill — home is `~/.agents/skills/`
 
 Claude Code runs **alongside other coding agents** (Codex and others). So a skill's canonical copy lives in the runtime-neutral home `~/.agents/skills/<name>/`, and `~/.claude/skills/<name>` is a **symlink** pointing there. This holds even when `/skill-creator` is invoked — if the skill-creator skill says to write directly into `~/.claude/skills/`, this rule wins. Most existing skills already follow this layout.
