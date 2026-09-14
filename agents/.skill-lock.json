@@ -328,6 +328,15 @@
       "skillFolderHash": "0bdb821a21e793a4f6f82a7078c052154447e5cc",
       "installedAt": "2026-09-09T02:18:53.874Z",
       "updatedAt": "2026-09-09T02:18:53.874Z"
+    },
+    "modern-web-guidance": {
+      "source": "GoogleChrome/modern-web-guidance",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/GoogleChrome/modern-web-guidance.git",
+      "skillPath": "skills/modern-web-guidance/SKILL.md",
+      "skillFolderHash": "9bd508d217b14d82adb63f2ec05b955c551c24cc",
+      "installedAt": "2026-09-11T07:42:26.192Z",
+      "updatedAt": "2026-09-11T07:42:26.192Z"
     }
   },
   "dismissed": {
@@ -335,14 +344,13 @@
   },
   "lastSelectedAgents": [
     "amp",
-    "antigravity",
-    "antigravity-cli",
     "cline",
     "codex",
     "cursor",
-    "deepagents",
+    "droid",
     "gemini-cli",
     "github-copilot",
+    "kilo",
     "kimi-code-cli",
     "opencode",
     "warp",
