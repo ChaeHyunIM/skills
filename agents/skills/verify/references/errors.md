@@ -6,7 +6,7 @@
 | `Executable doesn't exist at …/ms-playwright/…` | 브라우저가 다운로드되지 않음 | `pnpm exec playwright install chromium`을 실행한다. |
 | 테스트가 로그인 화면으로 이동함 | 저장한 로그인 상태가 없거나 만료됨 | 사람이 Playwright MCP 브라우저에 로그인한 뒤 `browser_storage_state`로 `.e2e/storage-state/<app>.json`에 저장한다. |
 | `browser_*` 도구를 찾을 수 없음 | 현재 환경에 해당 도구가 없음 | 사용할 수 있는 브라우저 도구를 확인하고 같은 일을 할 수 있는 방법을 쓰거나 필요한 기능이 없다고 보고한다. |
-| `gh pr edit: unknown flag --attach` | CLI가 첨부 옵션을 지원하지 않음 | 로컬 파일 링크 없이 글로 된 검증 결과만 올린다. 캡처·영상은 로컬에 보관하고 CLI 업그레이드는 별도 작업으로 한다. |
+| `gh pr edit: unknown flag --attach` | CLI가 첨부 옵션을 지원하지 않음 | [게시 방법](publishing.md)에 따라 다른 첨부 수단을 확인한다. 막히면 PR 첨부 미완료를 적고 로컬 기록물을 사용자에게 제공한다. |
 | web에서 `ECONNREFUSED localhost:4000`이 발생함 | API 서버가 시작되지 않음 | `dev-servers.sh start head <root> api doko`를 실행한다. web은 같은 세트의 API가 필요하다. |
 | web 서버가 다른 API 포트로 요청함 | `.env.local`의 `VITE_API_BASE_URL`이 적용됨 | `dev-servers.sh`는 세트별 값을 지정한다. `.e2e/servers/<set>/doko.log`에서 Vite가 출력한 URL을 확인한다. |
 | `port … is taken by another process` | 이전 서버 세트나 사용자의 개발 서버가 포트를 사용 중 | 자신이 시작한 서버는 `dev-servers.sh stop head`·`stop base`로 종료한다. `lsof -i :<port>`로 확인할 수 있으며 다른 사람의 서버는 승인 없이 종료하지 않는다. |

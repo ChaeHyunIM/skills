@@ -1,6 +1,6 @@
 # Argent로 앱 동작 확인하기
 
-앱에서 같은 조작을 반복 실행하거나 사용자가 녹화를 요청했을 때 읽는다. 한 번 직접 확인하는 일은 사용 가능한 기기 도구로 진행하고 재현 방법과 실제 결과를 남기면 된다. 영상이 근거를 더해 주지 않으면 녹화할 필요는 없다. `verify`에서 새 흐름을 만들 때는 임시 프로젝트 폴더를 사용하고 이미 커밋된 흐름을 덮어쓰지 않는다.
+앱 캡처·녹화나 반복 실행 시 읽는다. 직접 조작도 [필수 기록물 기준](routes.md)을 따른다. 반복 실행할 flow는 재사용 가치가 있을 때 만들고, `verify`의 새 flow는 임시 프로젝트 폴더에 둔다.
 
 `argent`(`@swmansion/argent`, PATH의 `/opt/homebrew/bin/argent`)는 iOS 시뮬레이터를 조작한다. 에이전트가 앱을 살펴보며 한 조작을 흐름으로 기록하고, 이후 모델 없이 재생할 수 있다.
 
@@ -10,12 +10,14 @@
 
 1. `list-devices`로 기기를 확인하고 `boot-device`로 부팅하거나 이미 켜진 기기에 연결한다. dev client의 bundle id로 `launch-app`을 실행한다. head worktree의 Metro가 실행 중이어야 한다. `dev-servers.sh start head <root> doko-app`의 포트는 8081이다.
 2. `flow-start-recording`에 `name: verify/<claim-slug>`와 `project_root: <repo root>`를 전달한다. 이 명령은 `.argent/flows/verify/<claim-slug>.yaml`을 새로 쓴다. `verify`에서 만든 새 흐름은 위 원칙대로 임시 프로젝트 폴더에 둔다.
-3. 앱을 살펴볼 때는 스크린샷보다 `describe`의 접근성 트리를 사용한다. `gesture-tap`, `keyboard`, `gesture-swipe`, `open-url` 등 조작은 모두 `flow-add-step`으로 추가해야 기록된다.
+3. 요소 탐색·조작은 `describe`, 배치·시각 상태 확인은 캡처를 사용한다. `gesture-tap`, `keyboard`, `gesture-swipe`, `open-url` 등 조작은 `flow-add-step`으로 추가해야 기록된다.
 4. `await-ui-element`로 기대한 화면 요소가 나타나는지 확인한다. 이 단계가 assertion으로 기록돼 통과 여부를 판단한다. 캡처 전에는 `await-screen-idle`로 화면이 안정될 때까지 기다린다.
 5. `flow-add-echo`로 조작 전·조작·결과 지점을 표시하고 각 지점에서 `screenshot`을 찍어 파일을 보관한다.
 6. `flow-finish-recording`으로 기록을 마친다.
 
 ## 같은 흐름 재생하고 녹화하기
+
+flow YAML은 조작 기록이다. 화면 영상은 `screen-recording-*`로 별도 확보하며, 직접 조작할 때도 진입 전에 녹화를 시작하고 결과 확인 후 종료한다.
 
 ```bash
 argent run screen-recording-start --output .e2e/evidence/<run>/<claim>-head.mp4
@@ -32,14 +34,14 @@ argent run screen-recording-stop
 dev client는 한 번에 하나의 Metro 서버만 사용할 수 있다.
 
 1. `dev-servers.sh start base <base-worktree> doko-app`으로 base worktree의 Metro를 8082 포트에서 시작한다.
-2. dev 메뉴나 프로젝트 문서의 deep link로 `http://localhost:8082`에 연결한다. `restart-app`을 실행한 뒤 같은 흐름을 재생하고 `<claim>-base.mp4`로 녹화한다.
+2. dev 메뉴나 프로젝트 문서의 deep link로 `http://localhost:8082`에 연결한다. `restart-app` 후 같은 조건으로 base 캡처를 확보한다. base 영상도 필요한 경우 `<claim>-base.mp4`로 녹화한다.
 3. 비교가 끝나면 8081로 다시 연결한다.
 
-현재 기기에서 서버를 바꿀 수 없다면 head만 녹화하고 해당 항목에 `before 비교 생략: <이유>`를 적는다. 통과 여부는 head를 재생했을 때 확인 단계가 성공했는지로 판단한다.
+서버 전환이 막히면 head 기록물과 실제 오류를 남긴다. 필수 base 비교가 남은 항목은 미검증이며, `--no-before` 요청은 비교 생략 범위로 기록한다.
 
 ## 캡처와 영상 파일
 
-`screen-recording-*`는 기기 해상도의 H.264 mp4를 만들므로 별도 변환은 필요 없다. 무료 요금제의 10 MB 제한을 확인한다. 시뮬레이터의 30초 영상은 보통 이보다 작다. 스틸 이미지는 echo로 표시한 지점의 `screenshot`을 사용한다.
+`screen-recording-*`는 기기 해상도의 H.264 mp4를 만든다. `evidence-block.mjs`의 파일당 10 MB 제한을 확인한다. 스틸 이미지는 `screenshot`으로 확보한다.
 
 ## 파일을 두는 곳
 

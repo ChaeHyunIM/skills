@@ -17,7 +17,7 @@
  *       "status": "충족",                                                 // 충족 | 미충족 | 미검증
  *       "detail": "apps/doko/e2e/mission-rejoin.spec.ts · head pass / base fail(버튼 없음)",
  *       "note":   "base 에서도 성립",                                      // 선택 사항
- *       "media": [                                                        // 선택 사항, 경로는 cwd 기준
+ *       "media": [                                                        // UI는 references/routes.md 기준 필수, 경로는 cwd 기준
  *         { "kind": "pair",  "label": "Desktop", "before": ".e2e/evidence/r1/c2-before.png", "after": ".e2e/evidence/r1/c2-after.png" },
  *         { "kind": "image", "label": "결과",    "file": ".e2e/evidence/r1/c2-result.png" },
  *         { "kind": "video", "label": "head",   "file": ".e2e/evidence/r1/c2-head.mp4" },

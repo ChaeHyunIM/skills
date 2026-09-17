@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// 완료 조건 하나 = test 하나. 제목은 조건 원문 그대로 쓴다.
-// 조작 전·조작·결과 스크린샷은 spec 이 직접 찍는다 — 영상에서 프레임을 뽑는 것보다 결정적이다.
+// 흐름 검증은 E2E_VIDEO=1로 실행하고, 캡처와 영상은 완료 조건에 연결한다.
 test("이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 표시된다", async ({ page }, info) => {
   info.annotations.push({ type: "claim", description: "YOU-123 완료 조건 2" });
 
@@ -17,7 +16,7 @@ test("이미 참여한 미션을 다시 누르면 '이미 참여 중' 안내가 
   await page.screenshot({ path: info.outputPath("result.png") });
 });
 
-// 상태 조건은 assertion 하나와 스크린샷 하나면 된다.
+// 상태 캡처 예시. 기존 화면 변경은 같은 조건으로 base/head에서 실행한다.
 test("상세 화면 상단에 만료일이 표시된다", async ({ page }, info) => {
   await page.goto("/gift-cards/7");
   await expect(page.getByTestId("expires-at")).toBeVisible();
