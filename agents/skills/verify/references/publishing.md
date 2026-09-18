@@ -3,7 +3,7 @@
 `implement`와 `verify`가 함께 사용한다. 결과의 판단 기준과 재사용 방법은 [공통 검증 규칙](../../agent-loop/references/verification.md)을 따른다.
 
 1. 완료 조건 원문과 판정·근거, 검증한 커밋의 전체 SHA와 환경을 `results.json`에 적는다. UI 기록물은 해당 항목의 `media`에 넣는다: 새 화면 `image` + `video`, 기존 화면 변경 `pair`, 흐름 추가·변경 `video`. 형식은 [evidence-block.mjs](../scripts/evidence-block.mjs) 첫 주석을 따른다.
-2. 기존 PR을 고칠 때는 최신 본문을 파일로 읽는다. PR head와 완료 조건이 검증할 때와 같은지 확인한다. 새 PR은 티켓 연결 정보, 구현 설명, 검증 결과를 함께 준비한다.
+2. 기존 PR을 고칠 때는 최신 본문을 파일로 읽는다. PR head와 완료 조건이 검증할 때와 같은지 확인한다. 새 PR은 [PR 본문 양식](../../agent-loop/references/pr-body.md)대로 준비한다.
 3. 아래 스크립트로 본문을 만든다. 검증 마커 밖의 글은 그대로 둔다. 중복된 섹션이나 마커가 있어 어느 쪽인지 모호하면 임의로 지우지 않는다.
 
 ```bash
