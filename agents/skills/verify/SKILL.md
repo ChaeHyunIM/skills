@@ -7,7 +7,7 @@ description: 열린 PR에서 남은 완료 조건이나 다시 확인할 동작�
 
 아직 확인하지 못한 조건을 검증하거나, 코드·환경이 달라진 결과를 다시 확인한다. `implement`가 필요한 검증을 이미 마쳤다면 이 스킬을 따로 부를 필요는 없다. 그대로 쓸 수 있는 기존 결과는 재사용한다.
 
-시작할 때 [공유 규칙](../agent-loop/CONTRACT.md)과 [검증과 기록 방법](../agent-loop/references/verification.md)을 읽는다. 제품 코드, 티켓 상태, 이슈의 체크박스는 바꾸지 않는다. PR 생성, 커밋, push, 유료 리뷰, 머지도 하지 않는다.
+시작할 때 [공유 규칙](../agent-loop/CONTRACT.md)과 [검증과 기록 방법](../agent-loop/references/verification.md)을 읽는다. 제품 코드, 티켓 상태, 이슈의 체크박스는 바꾸지 않는다. PR 생성, 커밋, push, 머지도 하지 않는다.
 
 ## 확인할 대상 정하기
 

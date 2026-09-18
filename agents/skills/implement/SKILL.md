@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # implement
 
-티켓의 구현과 필요한 검증·수정을 마치고 PR을 준비한다. 확인한 결과와 남은 항목을 PR에 적는다. 필요한 검증이 모두 끝났으면 별도 `verify` 호출 없이 사람이 리뷰와 병합을 판단할 수 있다.
+티켓의 구현과 실제 동작·코드 품질 검증을 마치고 PR을 준비한다. 확인한 결과와 남은 항목을 PR에 적는다. 필요한 검증이 모두 끝났으면 사람이 병합을 판단할 수 있다.
 
 시작할 때 [공유 규칙](../agent-loop/CONTRACT.md)을 읽는다. 티켓 처리는 [트래커 규칙](../agent-loop/references/tracker.md), 작업 폴더와 커밋은 [작업 환경](../agent-loop/references/workspace.md), 검증은 [검증과 기록 방법](../agent-loop/references/verification.md)을 따른다.
 
@@ -29,6 +29,7 @@ bash ~/.agents/skills/implement/scripts/prepare-worktree.sh <N> <ascii-slug> [<b
 
 - 이슈의 목표와 완료 조건, 프로젝트 지침을 따른다. Figma 링크가 있는 UI는 해당 스킬과 도구로 디자인을 읽고 배치와 스타일을 맞춘다. 디자인과 승인된 정책이 충돌하면 그 부분을 확인받는다.
 - 필요한 테스트, API 요청, 브라우저·시뮬레이터·기기 확인을 실제로 수행한다. 구현 중이라는 이유로 UI 확인을 금지하거나 다음 `verify` 호출로 미루지 않는다.
+- [code-quality](../code-quality/SKILL.md)로 변경에 맞는 전문 스킬을 읽고 코드 품질을 확인한다. 작업 범위 안에서 발견한 문제는 이번 구현에서 고친다.
 - 진입 방법·준비 상태·함정을 찾느라 헤맸다면 프로젝트 검증 스킬의 방식대로 기능 메모에 남긴다. 문구나 좌표로만 잡힌 핵심 요소에는 안정적인 식별자를 붙인다. 둘 다 이번 PR에 포함한다. 프로젝트 검증 스킬이 없으면 새로 만들지 않는다.
 - 화면이나 사용자 흐름을 추가·변경했다면 [필수 기록물](../verify/references/routes.md)을 남기고 사람이 열어볼 수 있게 전달해야 검증이 끝난다. 유효한 기존 결과와 기록물은 재사용한다.
 - 캡처·녹화나 반복 실행 방법은 [web](../verify/references/web-playwright.md)·[앱](../verify/references/app-argent.md), 기록물 점검은 [검증 근거 확인](../verify/references/quality-gates.md)을 따른다.
@@ -43,7 +44,7 @@ bash ~/.agents/skills/implement/scripts/prepare-worktree.sh <N> <ascii-slug> [<b
 4. 새 작업은 draft가 아닌 PR을 연다. 연결할 티켓을 적는 `Fixes`·`Closes` 줄, 실제 base, 구현 설명, 실제 검증 결과를 본문에 넣는다. 기존 PR은 최신 본문에서 구현 설명과 검증 결과 부분을 고치고, 다른 사람이 쓴 글은 보존한다.
 5. 게시한 본문, PR head, 티켓 상태를 다시 확인한다. 필요한 검증이 모두 끝났으면 작업을 마친다. 남은 검증이 있을 때만 그 항목과 `verify <N>`으로 이어갈 수 있음을 안내한다.
 
-유료 리뷰나 머지는 이 스킬에서 시작하지 않는다. 진행 상황을 보여 주려고 구현 도중 PR을 먼저 열지 않는다.
+머지는 이 스킬에서 시작하지 않는다. 진행 상황을 보여 주려고 구현 도중 PR을 먼저 열지 않는다.
 
 ## 결과와 남은 일 보고하기
 

@@ -4,8 +4,8 @@
 
 | 항목 | Linear | GitHub Issues |
 |---|---|---|
-| agent-loop 작업 상태 | Agent 그룹의 `agent:<state>` 라벨 하나 | `ready-for-agent` · `agent-in-progress` · `agent-awaiting-review` · `agent-in-review` · `agent-blocked` 중 하나 |
-| 팀의 작업 상태 | ready → Todo, in-progress → In Progress, awaiting-review·in-review → In Review, 머지 → Done. blocked는 기존 팀 상태 유지 | 없음 |
+| agent-loop 작업 상태 | Agent 그룹의 `agent:<state>` 라벨 하나 | `ready-for-agent` · `agent-in-progress` · `agent-awaiting-review` · `agent-blocked` 중 하나 |
+| 팀의 작업 상태 | ready → Todo, in-progress → In Progress, awaiting-review → In Review, 머지 → Done. blocked는 기존 팀 상태 유지 | 없음 |
 | 선행 작업 | 트래커의 `blocked-by` 관계 | 트래커의 `blocked-by` 관계 |
 | 상위 티켓 | `parent`·`sub-issue` 관계 | 현재 도구가 트래커의 `sub-issue` 기능을 지원하는지 확인 |
 | PR에서 티켓 연결 | `Fixes YOU-nn` | `Closes #nn` |

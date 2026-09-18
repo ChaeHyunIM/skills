@@ -1,6 +1,0 @@
-interface:
-  display_name: "Review Round"
-  short_description: "Claude와 Codex가 PR을 리뷰하고 수정 결과와 남은 결정을 정리합니다."
-  default_prompt: "$review-round로 지정한 티켓의 PR을 리뷰하고 수정 결과와 남은 결정을 정리해 줘."
-policy:
-  allow_implicit_invocation: false
