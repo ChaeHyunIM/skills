@@ -337,6 +337,24 @@
       "skillFolderHash": "9bd508d217b14d82adb63f2ec05b955c551c24cc",
       "installedAt": "2026-09-11T07:42:26.192Z",
       "updatedAt": "2026-09-11T07:42:26.192Z"
+    },
+    "create-verification-skill": {
+      "source": "cursor/plugins",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/cursor/plugins.git",
+      "skillPath": "pstack/skills/create-verification-skill/SKILL.md",
+      "skillFolderHash": "38a3e016bb42ba7ba6f66315e04ef64242937660",
+      "installedAt": "2026-09-18T08:39:03.000Z",
+      "updatedAt": "2026-09-18T08:39:03.000Z"
+    },
+    "maintain-verification-skill": {
+      "source": "cursor/plugins",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/cursor/plugins.git",
+      "skillPath": "pstack/skills/maintain-verification-skill/SKILL.md",
+      "skillFolderHash": "b6ce4dcdc378492f9acd55a4e56ae111204b4f11",
+      "installedAt": "2026-09-18T08:39:03.000Z",
+      "updatedAt": "2026-09-18T08:39:03.000Z"
     }
   },
   "dismissed": {

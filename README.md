@@ -30,6 +30,10 @@ Claude Code 가 항상 얹는 압축본이고, 스킬은 `references/` 예시까
 기능에 기대면 전용이다. 옮겨봐야 다른 데서 안 돈다. 그 외에는 전부 `agents/skills/` 정본으로
 두고 여러 런타임이 같이 쓴다.
 
+`create-verification-skill` · `maintain-verification-skill` 은 [pstack](https://github.com/cursor/plugins/tree/main/pstack)
+에서 가져왔다. 스킬 생성 경로만 `.cursor/skills/` 에서 `.agents/skills/` 로 바꾸고 나머지는 원본 그대로 뒀다.
+업데이트할 때도 경로만 바꾼다. 기능 맵을 미리 채우는 3단계는 원본에 남겨 두고, 호출할 때 건너뛰도록 지시한다.
+
 ## 설치
 
 설치 스크립트를 두지 않는다. 어느 경로에 어떤 이름으로 얹어야 그 런타임이 스킬을
