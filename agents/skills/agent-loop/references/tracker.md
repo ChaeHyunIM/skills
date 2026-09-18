@@ -8,7 +8,7 @@
 | 팀의 작업 상태 | ready → Todo, in-progress → In Progress, awaiting-review → In Review, 머지 → Done. blocked는 기존 팀 상태 유지 | 없음 |
 | 선행 작업 | 트래커의 `blocked-by` 관계 | 트래커의 `blocked-by` 관계 |
 | 상위 티켓 | `parent`·`sub-issue` 관계 | 현재 도구가 트래커의 `sub-issue` 기능을 지원하는지 확인 |
-| PR에서 티켓 연결 | `Fixes YOU-nn` | `Closes #nn` |
+| PR에서 티켓 연결 | `Closes YOU-nn` | `Closes #nn` |
 
 - 별도의 `In Review / QA` 상태를 만들지 않는다. 작업 상태를 바꾸면 이전 라벨을 지우고 하나만 남았는지 다시 읽는다.
 - `ready`는 스펙 작성이 끝났다는 뜻이다. 바로 구현할 수 있는지는 선행 티켓이 끝났고 연결된 PR도 머지됐는지로 판단한다.
