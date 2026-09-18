@@ -8,9 +8,12 @@ BASE="${3:-}"
 [[ "$N" =~ ^[A-Za-z0-9-]+$ ]] || { echo "invalid issue identifier" >&2; exit 64; }
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "slug must use lowercase ASCII words and hyphens" >&2; exit 64; }
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-CHECK="$SCRIPT_DIR/../../agent-loop/scripts/check-worktree.sh"
+LOOP="$SCRIPT_DIR/../../agent-loop/scripts"
+CHECK="$LOOP/check-worktree.sh"
+. "$LOOP/load-config.sh"
 
 ROOT=$(git rev-parse --show-toplevel)
+agent_loop_load_config "$ROOT"
 WT="$ROOT/.claude/worktrees/issue-$N-$SLUG"
 BRANCH="agent/issue-$N-$SLUG"
 
@@ -32,18 +35,23 @@ fi
 
 bash "$CHECK" "$WT" >/dev/null
 
-# pnpm 링크는 worktree마다 필요하므로 설치를 생략하면 타입 검사가 실패한다.
-(cd "$WT" && pnpm install)
+if [ -n "${INSTALL_CMD:-}" ]; then
+  (cd "$WT" && eval "$INSTALL_CMD")
+else
+  echo "INSTALL_CMD is empty in $AGENT_LOOP_CONFIG; dependencies were not installed" >&2
+fi
 
-# gitignore 대상인 routeTree를 새로 생성하면 declare module이 누락될 수 있어 원본을 복사한다.
+# gitignore된 생성 파일은 새 worktree에 없으므로 메인 체크아웃에서 복사한다.
 copied=0
-for src in "$ROOT"/apps/*/src/routeTree.gen.ts; do
-  [ -f "$src" ] || continue
-  dst="$WT/${src#"$ROOT"/}"
-  mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
-  copied=$((copied + 1))
+for pattern in ${COPY_FROM_MAIN:-}; do
+  for src in "$ROOT"/$pattern; do
+    [ -f "$src" ] || continue
+    dst="$WT/${src#"$ROOT"/}"
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    copied=$((copied + 1))
+  done
 done
-[ "$copied" -eq 0 ] && echo "WARN: no routeTree.gen.ts found — generate it in the main checkout first" >&2
+[ -n "${COPY_FROM_MAIN:-}" ] && [ "$copied" -eq 0 ] && echo "WARN: COPY_FROM_MAIN matched no files in the main checkout — generate the files there first" >&2
 
-echo "ready: $WT (branch $BRANCH, $copied routeTree copied)"
+echo "ready: $WT (branch $BRANCH); generated files copied: $copied"

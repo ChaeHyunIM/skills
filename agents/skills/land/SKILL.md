@@ -20,10 +20,10 @@ disable-model-invocation: true
 ## 병합할 코드 준비하기
 
 1. 실제 worktree와 브랜치를 확인한다. 없으면 [prepare-worktree.sh](../implement/scripts/prepare-worktree.sh)로 기존 브랜치의 worktree를 복구한다.
-2. [sync-worktree.sh](../agent-loop/scripts/sync-worktree.sh)에 worktree와 브랜치를 전달해 원격의 최신 커밋을 가져온다. 로컬 변경과 원격에 올리지 않은 커밋이 없을 때만 fast-forward한다. 실패하면 기존 작업을 보존하고 해당 PR은 남긴다.
+2. 작업 브랜치를 fetch해 원격의 최신 커밋을 가져온다. 로컬 변경과 원격에 올리지 않은 커밋이 없을 때만 `git merge --ff-only`로 맞춘다. 실패하면 기존 작업을 보존하고 해당 PR은 남긴다.
 3. PR의 현재 base를 다시 읽고 fetch한 base를 작업 브랜치에 merge한다. 충돌은 [충돌 해결 기준](references/conflicts.md)을 따른다. 사람이 정책이나 기능을 선택해야 하는 충돌이면 merge를 중단하고 그 PR만 `blocked`로 남긴다.
 4. 합쳐진 코드에 필요한 타입 체크를 한다. 같은 코드와 입력에서 통과한 결과는 재사용한다. 요청 범위 밖의 동작을 바꾸지 않는다. 충돌을 해결하거나 코드를 수정했으면 공통 커밋 절차를 따르고 작업 브랜치를 push한다.
-5. 최종 PR head, base SHA, 최신 완료 조건을 확인하고 [verified-head.sh](../verify/scripts/verified-head.sh)를 실행한다. base 반영이나 충돌 해결로 커밋이 바뀌었으면 기존 검증 기록은 `stale`이다. 기능을 검증했다고 쓰거나 검증 기록을 직접 고치지 않는다.
+5. 최종 PR head, base SHA, 최신 완료 조건을 확인하고 [verified-head.sh](../agent-loop/scripts/verified-head.sh)를 실행한다. base 반영이나 충돌 해결로 커밋이 바뀌었으면 기존 검증 기록은 `stale`이다. 기능을 검증했다고 쓰거나 검증 기록을 직접 고치지 않는다.
 
 원격 변경을 반영하려고 `reset --hard`, 자동 stash, force-push를 사용하지 않는다.
 

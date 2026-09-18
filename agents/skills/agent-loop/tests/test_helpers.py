@@ -24,6 +24,7 @@ class HelpersTest(unittest.TestCase):
             GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.invalid",
         )
         self.git("init", "-q")
+        self.write_config("INSTALL_CMD=\n")
         self.a = self.commit("base\n")
         self.v = self.commit("verified\n", [self.a])
         self.b = self.commit("new base\n", [self.a])
@@ -35,11 +36,13 @@ class HelpersTest(unittest.TestCase):
         gh = self.bin / "gh"
         gh.write_text('#!/bin/sh\ncat "$TEST_PR_JSON"\n')
         gh.chmod(0o755)
-        ps = self.bin / "ps"
-        ps.write_text('#!/bin/sh\n[ "$2" = "${TEST_OWNED_PID:-none}" ] || exit 1\nprintf "fixture-start\\n"\n')
-        ps.chmod(0o755)
         self.env["PATH"] = str(self.bin) + os.pathsep + self.env["PATH"]
         self.env["TEST_PR_JSON"] = str(self.root / "pr.json")
+
+    def write_config(self, text, repo=None):
+        cfg = (repo or self.repo) / ".claude/agent-loop/config"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        cfg.write_text(text)
 
     def git(self, *args, input=None):
         return subprocess.run(["git", "-C", str(self.repo), *args], input=input,
@@ -71,7 +74,7 @@ class HelpersTest(unittest.TestCase):
         Path(self.env["TEST_PR_JSON"]).write_text(json.dumps({
             "body": body, "headRefOid": head, "headRefName": "pr",
         }))
-        return self.script(SKILLS / "verify/scripts/verified-head.sh", "1", self.repo)
+        return self.script(LOOP / "scripts/verified-head.sh", "1", self.repo)
 
     def test_same_head_is_current(self):
         result = self.record()
@@ -133,30 +136,10 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(self.script(LOOP / "scripts/check-worktree.sh", hollow).returncode, 3)
         self.assertEqual(self.script(LOOP / "scripts/check-worktree.sh", self.repo, self.a).returncode, 4)
 
-    def test_sync_fast_forwards_and_preserves_local_only_commit(self):
-        clone = self.root / "clone"
-        subprocess.run(["git", "clone", "-q", str(self.repo), str(clone)], check=True, env=self.env)
-        self.checkout(self.m)
-        result = self.script(LOOP / "scripts/sync-worktree.sh", clone, "pr")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((clone / "value.txt").read_text(), "integrated\n")
-        self.checkout(self.v)
-        result = self.script(LOOP / "scripts/sync-worktree.sh", clone, "pr")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual((clone / "value.txt").read_text(), "integrated\n")
-
-    def test_sync_rejects_dirty_and_wrong_branch(self):
-        (self.repo / "value.txt").write_text("keep me\n")
-        result = self.script(LOOP / "scripts/sync-worktree.sh", self.repo, "pr")
-        self.assertEqual(result.returncode, 3)
-        self.assertEqual((self.repo / "value.txt").read_text(), "keep me\n")
-        (self.repo / "value.txt").write_text("verified\n")
-        self.assertNotEqual(self.script(LOOP / "scripts/sync-worktree.sh", self.repo, "other").returncode, 0)
-
     def test_slug_rejected_before_worktree_creation(self):
         result = self.script(SKILLS / "implement/scripts/prepare-worktree.sh", "12", "한글")
         self.assertEqual(result.returncode, 64)
-        self.assertFalse((self.repo / ".claude").exists())
+        self.assertFalse((self.repo / ".claude/worktrees").exists())
 
     def test_prepare_does_not_install_over_another_branch(self):
         worktree = self.repo / ".claude/worktrees/issue-12-good"
@@ -166,62 +149,42 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual((worktree / "value.txt").read_text(), "verified\n")
 
     def test_prepare_creates_an_isolated_worktree(self):
-        pnpm = self.bin / "pnpm"
-        pnpm.write_text("#!/bin/sh\nexit 0\n")
-        pnpm.chmod(0o755)
+        generated = self.repo / "apps/web/src/routeTree.gen.ts"
+        generated.parent.mkdir(parents=True)
+        generated.write_text("generated\n")
+        self.write_config('INSTALL_CMD="touch installed-here"\nCOPY_FROM_MAIN="apps/*/src/routeTree.gen.ts"\n')
         result = self.script(SKILLS / "implement/scripts/prepare-worktree.sh", "12", "good", "pr")
         self.assertEqual(result.returncode, 0, result.stderr)
         worktree = self.repo / ".claude/worktrees/issue-12-good"
         self.assertEqual((worktree / "value.txt").read_text(), "verified\n")
+        self.assertTrue((worktree / "installed-here").exists())
+        self.assertEqual((worktree / "apps/web/src/routeTree.gen.ts").read_text(), "generated\n")
+        self.assertIn("generated files copied: 1", result.stdout)
         branch = subprocess.check_output(["git", "-C", str(worktree), "branch", "--show-current"], text=True, env=self.env).strip()
         self.assertEqual(branch, "agent/issue-12-good")
 
-    def test_remove_only_named_clean_base_worktree(self):
-        one = self.repo / ".claude/worktrees/verify-base-one"
-        two = self.repo / ".claude/worktrees/verify-base-two"
-        self.git("worktree", "add", "--detach", str(one), self.a)
-        self.git("worktree", "add", "--detach", str(two), self.b)
-        helper = SKILLS / "verify/scripts/base-worktree.sh"
-        self.assertNotEqual(self.script(helper, "--remove").returncode, 0)
-        (one / "value.txt").write_text("user work\n")
-        self.assertNotEqual(self.script(helper, "--remove", one).returncode, 0)
-        self.assertEqual((one / "value.txt").read_text(), "user work\n")
-        (one / "value.txt").write_text("base\n")
-        result = self.script(helper, "--remove", one)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(one.exists())
-        self.assertTrue(two.exists())
+    def test_prepare_without_config_creates_nothing(self):
+        (self.repo / ".claude/agent-loop/config").unlink()
+        result = self.script(SKILLS / "implement/scripts/prepare-worktree.sh", "12", "good", "pr")
+        self.assertEqual(result.returncode, 78, result.stderr)
+        self.assertIn("config.example", result.stderr)
+        self.assertFalse((self.repo / ".claude/worktrees").exists())
 
-    def test_server_stop_preserves_unknown_process(self):
-        process = subprocess.Popen(["sleep", "30"])
-        def cleanup():
-            if process.poll() is None:
-                process.terminate()
-            process.wait()
-        self.addCleanup(cleanup)
-        state = self.repo / ".e2e/servers/head"
-        state.mkdir(parents=True)
-        (state / "api.pid").write_text(str(process.pid))
-        (state / "api.started").write_text("not this process")
-        result = self.script(SKILLS / "verify/scripts/dev-servers.sh", "stop", "head")
-        self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIsNone(process.poll())
-
-    def test_server_stop_terminates_owned_process(self):
-        process = subprocess.Popen(["sleep", "30"])
-        def cleanup():
-            if process.poll() is None:
-                process.terminate()
-            process.wait()
-        self.addCleanup(cleanup)
-        state = self.repo / ".e2e/servers/head"
-        state.mkdir(parents=True)
-        (state / "api.pid").write_text(str(process.pid))
-        self.env["TEST_OWNED_PID"] = str(process.pid)
-        (state / "api.started").write_text("fixture-start\n")
-        result = self.script(SKILLS / "verify/scripts/dev-servers.sh", "stop", "head")
+    def test_prepare_skips_install_when_command_is_empty(self):
+        self.write_config("COPY_FROM_MAIN=\n")
+        result = self.script(SKILLS / "implement/scripts/prepare-worktree.sh", "12", "good", "pr")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(process.wait(timeout=2), -15)
+        self.assertIn("INSTALL_CMD is empty", result.stderr)
+        self.assertNotIn("WARN", result.stderr)
+
+    def test_worktree_without_config_falls_back_to_main_checkout(self):
+        worktree = self.repo / ".claude/worktrees/issue-12-good"
+        self.git("worktree", "add", "-b", "agent/issue-12-good", str(worktree), self.v)
+        self.write_config('INSTALL_CMD="from-main"\n')
+        loader = LOOP / "scripts/load-config.sh"
+        result = subprocess.run(["bash", "-c", f'. "{loader}" && agent_loop_load_config . && printf %s "$INSTALL_CMD"'],
+                                cwd=worktree, text=True, capture_output=True, env=self.env)
+        self.assertEqual((result.returncode, result.stdout), (0, "from-main"), result.stderr)
 
 
 if __name__ == "__main__":

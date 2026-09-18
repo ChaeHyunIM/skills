@@ -1,0 +1,10 @@
+# <repo>/.claude/agent-loop/config — prepare-worktree.sh가 worktree를 준비할 때 읽는 설정.
+# Bash에서 source하는 파일이며 Git에 커밋한다. 비밀값은 같은 디렉터리의 .env.local에 둔다.
+# 스크립트가 읽는 변수만 넣는다. 검사 명령은 저장소 지침(AGENTS.md 등)에, 앱 실행 명령과 포트는
+# 프로젝트 검증 스킬(.agents/skills/verify-<app>/)에 적는다. 아래는 doko-monorepo의 설정 예시다.
+#
+# INSTALL_CMD      새 worktree에서 실행할 의존성 설치 명령. 비우면 설치를 건너뛴다.
+# COPY_FROM_MAIN   메인 체크아웃에서 복사할 gitignore된 생성 파일의 glob. 여러 패턴은 공백으로 구분한다.
+#                 doko는 routeTree를 새로 생성하면 declare module이 빠질 수 있어 기존 파일을 복사한다.
+INSTALL_CMD="pnpm install"
+COPY_FROM_MAIN="apps/*/src/routeTree.gen.ts"
