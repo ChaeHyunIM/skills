@@ -11,6 +11,7 @@ Claude Code · Codex 등 여러 코딩 에이전트가 읽는 글을 모은 저�
 
 ```
 agents/
+  SOUL.md                      채현의 말투·소통 방식 공통 원본
   skills/                       런타임 중립 정본 — 어느 에이전트에서도 돈다
   .skill-lock.json              외부에서 받아온 스킬의 출처·해시 기록
 claude/
@@ -25,6 +26,13 @@ codex/
 `korean-output` 은 output-style 과 스킬 두 벌로 존재하고 본문이 다르다. output-style 은
 Claude Code 가 항상 얹는 압축본이고, 스킬은 `references/` 예시까지 딸린 원본이다.
 규칙이 겹치니 한쪽을 고치면 다른 쪽도 볼 것.
+
+`agents/SOUL.md`는 다른 사람에게 전달할 글을 쓸 때 읽는 공통 문서다. Slack·DM,
+이슈·PR 본문과 코멘트, 리뷰 답글, 공지, 복사해 보낼 초안에 적용한다. 별도 호출 스킬로
+만들지 않고 Codex·Claude 전역 지침에서 연결해 전용 스킬 없이 작성할 때도 읽게 한다.
+`agent-loop`의 네 스킬과 `review-flow`, 한국어 출력 규칙에도 작성 단계의 참조를 둔다.
+필수 양식과 사실관계를 보존하면서 말투에 적용하며, 게시 승인 규칙은 별도로 따른다.
+상대 링크는 심볼릭 링크를 따라간 원본 파일 위치를 기준으로 해석한다.
 
 **정본과 런타임 전용을 나누는 기준** — Workflow · Agent · Artifact 처럼 그 런타임에만 있는
 기능에 기대면 전용이다. 옮겨봐야 다른 데서 안 돈다. 그 외에는 전부 `agents/skills/` 정본으로
