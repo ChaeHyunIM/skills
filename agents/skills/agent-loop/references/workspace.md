@@ -15,7 +15,7 @@ config 파일이 없으면 스크립트는 exit code 78로 종료한다. 이때 
 - 새 작업의 base는 사용자가 지정한 `--base`, 메인 체크아웃의 현재 로컬 브랜치 순서로 정한다. detached HEAD 상태이거나 다른 `agent/issue-*` 브랜치 위에서 시작해야 하면 대상을 확인한다. 메인 체크아웃의 커밋하지 않은 변경은 새 worktree에 포함되지 않는다고 알린다.
 - [prepare-worktree.sh](../../implement/scripts/prepare-worktree.sh)가 작업 폴더와 브랜치를 확인하고, `INSTALL_CMD`로 의존성을 설치한 뒤 `COPY_FROM_MAIN`에 지정한 파일을 복사한다. 기존 작업은 덮어쓰지 않는다. 빈 디렉터리에서 Git이 상위 저장소를 찾은 것은 아닌지 `--show-toplevel`로 확인한다.
 - 기존 PR의 worktree를 원격 브랜치에 맞출 때는 fetch한 뒤 `git merge --ff-only`만 쓴다. 커밋하지 않은 변경이나 로컬에만 있는 커밋이 있거나, 다른 브랜치가 체크아웃돼 있으면 기존 상태를 보존하고 동기화를 중단한다. reset이나 자동 stash로 우회하지 않는다.
-- PR이 머지될 때까지 worktree를 남긴다. 머지한 뒤에도 세션이 닫힐 때까지 보존하고, 정리는 `tidy-merged`로 한다.
+- PR이 머지될 때까지 worktree를 남긴다. 머지한 뒤에도 세션이 닫힐 때까지 보존하고, 정리는 사람이 한다.
 
 ## 커밋하기 전 검사
 
