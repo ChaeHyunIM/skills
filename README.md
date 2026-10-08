@@ -23,10 +23,6 @@ codex/
   skills/                       Codex 전용
 ```
 
-`korean-output` 은 output-style 과 스킬 두 벌로 존재하고 본문이 다르다. output-style 은
-Claude Code 가 항상 얹는 압축본이고, 스킬은 `references/` 예시까지 딸린 원본이다.
-규칙이 겹치니 한쪽을 고치면 다른 쪽도 볼 것.
-
 `agents/SOUL.md`는 다른 사람에게 전달할 글을 쓸 때 읽는 공통 문서다. Slack·DM,
 이슈·PR 본문과 코멘트, 리뷰 답글, 공지, 복사해 보낼 초안에 적용한다. 별도 호출 스킬로
 만들지 않고 Codex·Claude 전역 지침에서 연결해 전용 스킬 없이 작성할 때도 읽게 한다.
