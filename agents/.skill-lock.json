@@ -226,6 +226,24 @@
       "skillFolderHash": "bdefda3891d347b8a183bdc727e4a1de2be3c82b",
       "installedAt": "2026-09-30T06:14:20.786Z",
       "updatedAt": "2026-09-30T06:14:20.786Z"
+    },
+    "animation-performance": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/emilkowalski/skill.git",
+      "skillPath": "skills/animation-performance/SKILL.md",
+      "skillFolderHash": "59c4651915a493803d1696d4278d2f9f980e47c8",
+      "installedAt": "2026-10-13T09:34:16.000Z",
+      "updatedAt": "2026-10-13T09:34:16.000Z"
+    },
+    "break-ui": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/emilkowalski/skill.git",
+      "skillPath": "skills/break-ui/SKILL.md",
+      "skillFolderHash": "f2a3441d4cf14df060ee363e155502a4818b5f8d",
+      "installedAt": "2026-10-13T09:34:16.000Z",
+      "updatedAt": "2026-10-13T09:34:16.000Z"
     }
   },
   "dismissed": {
