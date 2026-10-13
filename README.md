@@ -10,6 +10,7 @@ Claude Code · Codex 등 여러 코딩 에이전트가 읽는 글을 모은 저�
 ## 구조
 
 ```
+.claude-plugin/                 저장소 전체를 Claude Code 플러그인 `chaehyun`으로 묶는다 — 클라우드 세션용
 agents/
   SOUL.md                      채현의 말투·소통 방식 공통 원본
   skills/                       런타임 중립 정본 — 어느 에이전트에서도 돈다
@@ -29,6 +30,11 @@ codex/
 `agent-loop`의 네 스킬과 한국어 출력 규칙에도 작성 단계의 참조를 둔다.
 필수 양식과 사실관계를 보존하면서 말투에 적용하며, 게시 승인 규칙은 별도로 따른다.
 상대 링크는 심볼릭 링크를 따라간 원본 파일 위치를 기준으로 해석한다.
+
+**클라우드에서 쓰기** — 클라우드 세션은 로컬 `~/.claude/skills`를 읽지 않는다. Projects 의
+Project settings > Plugins 에 이 저장소를 마켓플레이스로 추가하면 `agents/skills`·`claude/skills` 가
+`chaehyun:<스킬>` 로 로드된다. 저장소의 `agents/` 를 서브에이전트 폴더로 읽지 않도록 매니페스트에
+`"agents": []` 를 둔다.
 
 **정본과 런타임 전용을 나누는 기준** — Workflow · Agent · Artifact 처럼 그 런타임에만 있는
 기능에 기대면 전용이다. 옮겨봐야 다른 데서 안 돈다. 그 외에는 전부 `agents/skills/` 정본으로

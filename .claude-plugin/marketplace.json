@@ -1,0 +1,11 @@
+{
+  "name": "chaehyun-skills",
+  "owner": { "name": "ChaeHyunIM" },
+  "plugins": [
+    {
+      "name": "chaehyun",
+      "source": "./",
+      "description": "채현의 개인 스킬 모음"
+    }
+  ]
+}

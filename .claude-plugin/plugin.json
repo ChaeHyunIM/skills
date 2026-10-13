@@ -1,0 +1,13 @@
+{
+  "name": "chaehyun",
+  "description": "채현의 개인 스킬 모음. agents/skills 공용 원본과 claude/skills Claude 전용 스킬을 함께 싣는다.",
+  "author": {
+    "name": "ChaeHyunIM"
+  },
+  "repository": "https://github.com/ChaeHyunIM/skills",
+  "skills": [
+    "./agents/skills/",
+    "./claude/skills/"
+  ],
+  "agents": []
+}
