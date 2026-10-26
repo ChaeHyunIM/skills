@@ -105,6 +105,43 @@ class HelpersTest(unittest.TestCase):
         for body in [section + section, section + f"검증 대상: {self.a}\n"]:
             self.assertEqual(self.record(body=body).returncode, 2)
 
+    def without_gh(self):
+        nogh = self.root / "nogh"
+        nogh.mkdir(exist_ok=True)
+        (nogh / "gh").write_text("#!/bin/sh\nexit 1\n")
+        (nogh / "gh").chmod(0o755)
+        self.env["PATH"] = str(nogh) + os.pathsep + self.env["PATH"]
+        for key in ["GH_TOKEN", "GITHUB_TOKEN", "VERIFIED_HEAD_PR_JSON"]:
+            self.env.pop(key, None)
+
+    def rest_body(self):
+        return {"body": f"## 완료 조건 검증\n검증 대상: `{self.v}`\n", "head": {"sha": self.v, "ref": "pr"}}
+
+    def test_pr_json_file_accepts_rest_shape(self):
+        self.without_gh()
+        path = self.root / "rest.json"
+        path.write_text(json.dumps(self.rest_body()))
+        self.env["VERIFIED_HEAD_PR_JSON"] = str(path)
+        result = self.script(LOOP / "scripts/verified-head.sh", "1", self.repo)
+        self.assertEqual((result.returncode, result.stdout.strip()), (0, "current " + self.v), result.stderr)
+
+    def test_falls_back_to_rest_with_token(self):
+        self.without_gh()
+        log = self.root / "curl.log"
+        (self.root / "rest.json").write_text(json.dumps(self.rest_body()))
+        curl = self.root / "nogh/curl"
+        curl.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{log}"\ncat "{self.root / "rest.json"}"\n')
+        curl.chmod(0o755)
+        self.env.update(GH_TOKEN="t", GITHUB_REPOSITORY="o/r")
+        result = self.script(LOOP / "scripts/verified-head.sh", "1", self.repo)
+        self.assertEqual((result.returncode, result.stdout.strip()), (0, "current " + self.v), result.stderr)
+        self.assertIn("https://api.github.com/repos/o/r/pulls/1", log.read_text())
+
+    def test_no_source_is_missing(self):
+        self.without_gh()
+        result = self.script(LOOP / "scripts/verified-head.sh", "1", self.repo)
+        self.assertEqual(result.returncode, 2)
+
     def test_link_label_mismatch_is_missing(self):
         body = f"## 완료 조건 검증\n검증 대상: [{self.a}](https://github.com/o/r/commit/{self.v})\n"
         self.assertEqual(self.record(body=body).returncode, 2)
