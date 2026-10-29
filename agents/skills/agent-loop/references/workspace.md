@@ -7,13 +7,23 @@ worktree 설정은 저장소의 `.claude/agent-loop/config`에 둔다. `prepare-
 | `INSTALL_CMD` | 새 worktree에서 한 번 실행하는 의존성 설치 명령. 비우면 건너뛴다. |
 | `COPY_FROM_MAIN` | gitignore된 생성 파일의 glob. 메인 체크아웃에서 복사한다. |
 
-config 파일이 없으면 스크립트는 exit code 78로 종료한다. 이때 설정값을 추측해 실행하지 말고 저장소 지침을 확인한다. 검사 명령은 저장소 지침(`AGENTS.md` 등), 앱 실행 방법은 프로젝트 검증 스킬을 참고한다.
+`prepare-worktree.sh`가 실패하면 stderr 메시지와 아래 대응을 따른다. 어느 경우든 기존 작업을 지우거나 덮어써서 통과시키지 않는다.
+
+| exit | 뜻 | 대응 |
+|---|---|---|
+| 64 | slug 형식이 틀렸다. | 형식에 맞는 값으로 다시 실행한다. |
+| 3 | base를 넘긴 새 작업인데 같은 slug의 worktree나 브랜치가 이미 있다. | 이어갈 작업이면 base 없이 다시 실행하고, 다른 작업이면 slug를 바꾼다. |
+| 3 | 기존 worktree에 커밋하지 않은 변경이나 원격에 없는 커밋이 있거나, 다른 브랜치가 체크아웃돼 있다. 경로가 상위 저장소로 잡혀도 같다. | 그 상태를 보존하고 어느 작업에서 만든 것인지 사용자에게 확인한다. |
+| 78 | config 파일이 없다. | 설정값을 추측해 실행하지 말고 저장소 지침을 확인한다. |
+
+검사 명령은 저장소 지침(`AGENTS.md` 등), 앱 실행 방법은 프로젝트 검증 스킬을 참고한다.
 
 ## worktree 준비와 유지
 
-- worktree는 `.claude/worktrees/issue-<N>-<slug>`, 브랜치는 `agent/issue-<N>-<slug>`를 쓴다. slug는 티켓 제목의 뜻을 옮긴 짧은 영어 이름이며 ASCII 소문자·숫자·하이픈으로 만든다.
-- 새 작업의 base는 사용자가 지정한 `--base`, 메인 체크아웃의 현재 로컬 브랜치 순서로 정한다. detached HEAD 상태이거나 다른 `agent/issue-*` 브랜치 위에서 시작해야 하면 대상을 확인한다. 메인 체크아웃의 커밋하지 않은 변경은 새 worktree에 포함되지 않는다고 알린다.
-- [prepare-worktree.sh](../../implement/scripts/prepare-worktree.sh)가 작업 폴더와 브랜치를 확인하고, `INSTALL_CMD`로 의존성을 설치한 뒤 `COPY_FROM_MAIN`에 지정한 파일을 복사한다. 기존 작업은 덮어쓰지 않는다. 빈 디렉터리에서 Git이 상위 저장소를 찾은 것은 아닌지 `--show-toplevel`로 확인한다.
+- worktree는 `.claude/worktrees/<slug>`, 브랜치는 `agent/<slug>`를 쓴다. slug는 요구사항이나 티켓 제목의 뜻을 옮긴 짧은 영어 이름이며 ASCII 소문자·숫자·하이픈으로 만든다.
+- 기존 작업을 이어갈 때는 PR의 head 브랜치에서 `agent/` 뒤를 slug로 넘긴다. 예전 `agent/issue-12-foo` 브랜치는 `issue-12-foo`가 slug다.
+- 새 작업의 base는 사용자가 지정한 `--base`, 메인 체크아웃의 현재 로컬 브랜치 순서로 정한다. detached HEAD 상태이거나 다른 `agent/*` 작업 브랜치 위에서 시작해야 하면 대상을 확인한다. 메인 체크아웃의 커밋하지 않은 변경은 새 worktree에 포함되지 않는다고 알린다.
+- [prepare-worktree.sh](../scripts/prepare-worktree.sh)가 작업 폴더와 브랜치를 확인하고, `INSTALL_CMD`로 의존성을 설치한 뒤 `COPY_FROM_MAIN`에 지정한 파일을 복사한다. 기존 작업은 덮어쓰지 않는다. 빈 디렉터리에서 Git이 상위 저장소를 찾은 것은 아닌지 `--show-toplevel`로 확인한다.
 - 기존 PR의 worktree를 원격 브랜치에 맞출 때는 fetch한 뒤 `git merge --ff-only`만 쓴다. 커밋하지 않은 변경이나 로컬에만 있는 커밋이 있거나, 다른 브랜치가 체크아웃돼 있으면 기존 상태를 보존하고 동기화를 중단한다. reset이나 자동 stash로 우회하지 않는다.
 - PR이 머지될 때까지 worktree를 남긴다. 머지한 뒤에도 세션이 닫힐 때까지 보존하고, 정리는 사람이 한다.
 

@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-N="${1:?usage: prepare-worktree.sh <issue-number> <slug> [base-branch]}"
-SLUG="${2:?slug required}"
-BASE="${3:-}"
+SLUG="${1:?usage: prepare-worktree.sh <slug> [base-branch]}"
+BASE="${2:-}"
 
-[[ "$N" =~ ^[A-Za-z0-9-]+$ ]] || { echo "invalid issue identifier" >&2; exit 64; }
 [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "slug must use lowercase ASCII words and hyphens" >&2; exit 64; }
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-LOOP="$SCRIPT_DIR/../../agent-loop/scripts"
+LOOP=$(cd "$(dirname "$0")" && pwd)
 CHECK="$LOOP/check-worktree.sh"
 . "$LOOP/load-config.sh"
 
 ROOT=$(git rev-parse --show-toplevel)
 agent_loop_load_config "$ROOT"
-WT="$ROOT/.claude/worktrees/issue-$N-$SLUG"
-BRANCH="agent/issue-$N-$SLUG"
+WT="$ROOT/.claude/worktrees/$SLUG"
+BRANCH="agent/$SLUG"
+
+# 이름에 티켓 번호가 없어 slug가 겹칠 수 있다. 새 작업이 남의 worktree를 이어받지 않게 막는다.
+if [ -n "$BASE" ] && { [ -d "$WT" ] || git -C "$ROOT" show-ref --verify --quiet "refs/heads/$BRANCH"; }; then
+  echo "$BRANCH already exists — resume it without a base or choose another slug" >&2; exit 3
+fi
 
 if [ -d "$WT" ]; then
   bash "$CHECK" "$WT" >/dev/null
@@ -27,6 +29,9 @@ if [ -d "$WT" ]; then
 else
   git -C "$ROOT" fetch origin
   if [ -n "$BASE" ]; then
+    if git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+      echo "$BRANCH already exists on origin — resume it without a base or choose another slug" >&2; exit 3
+    fi
     git -C "$ROOT" worktree add "$WT" -b "$BRANCH" "$BASE"
   else
     git -C "$ROOT" worktree add "$WT" "$BRANCH"

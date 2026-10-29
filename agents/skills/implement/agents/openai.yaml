@@ -1,6 +1,6 @@
 interface:
   display_name: "Implement"
-  short_description: "지정한 티켓을 구현하고 검증한 뒤 결과를 적은 PR을 준비합니다."
-  default_prompt: "$implement로 지정한 티켓을 구현하고, 완료 조건을 검증한 결과를 PR에 적어 줘."
+  short_description: "요구사항으로 완료 조건을 정해 기능을 구현하고 검증한 뒤 결과를 적은 PR을 준비합니다."
+  default_prompt: "$implement로 이 요구사항을 구현하고, 승인한 완료 조건을 검증한 결과를 PR에 적어 줘."
 policy:
   allow_implicit_invocation: false
