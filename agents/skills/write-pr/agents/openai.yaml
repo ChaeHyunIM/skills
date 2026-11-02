@@ -1,0 +1,6 @@
+interface:
+  display_name: "Write PR"
+  short_description: "PR 본문을 정해진 양식으로 쓰거나 고칩니다."
+  default_prompt: "$write-pr로 이 브랜치의 PR 본문을 써 줘."
+policy:
+  allow_implicit_invocation: true

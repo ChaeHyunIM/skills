@@ -71,5 +71,5 @@ PR 하나로 끝나는 작업은 `implement → land`, 티켓으로 나눠 관�
 - worktree를 준비하거나 커밋·실행 환경을 다룰 때: [작업 폴더와 실행 명령](references/workspace.md).
 - 구현·검증하고 PR을 준비할 때: [구현하고 PR 준비하기](references/implementation.md).
 - 완료 조건을 쓰거나 검증·병합할 때: [완료 조건과 검증 결과](references/acceptance-criteria.md).
-- PR 본문을 쓰거나 고칠 때: [PR 본문](references/pr-body.md).
+- PR 본문을 쓰거나 고칠 때: [write-pr](../write-pr/SKILL.md).
 - 규칙이 만들어진 이유를 다시 살펴볼 때만: [규칙의 배경과 확인 기록](references/evidence.md).

@@ -15,7 +15,7 @@ disable-model-invocation: true
 - 구현·검증하고 PR을 준비할 때: [구현하고 PR 준비하기](../agent-loop/references/implementation.md)
 - 코드 품질을 확인할 때: [code-quality](../code-quality/SKILL.md)
 - 검증하고 PR에 기록할 때: [검증과 기록 방법](../agent-loop/references/verification.md)
-- PR 본문을 쓸 때: [PR 본문 양식](../agent-loop/references/pr-body.md)
+- PR 본문을 쓸 때: [write-pr](../write-pr/SKILL.md)
 
 ## 요구사항 확인
 
@@ -44,7 +44,7 @@ bash ~/.agents/skills/agent-loop/scripts/prepare-worktree.sh <ascii-slug> [<base
 
 ## 구현하고 PR 준비하기
 
-[구현하고 PR 준비하기](../agent-loop/references/implementation.md)를 따른다. 승인받은 완료 조건은 [PR 본문 양식](../agent-loop/references/pr-body.md)의 `## 완료 조건`에 둔다.
+[구현하고 PR 준비하기](../agent-loop/references/implementation.md)를 따른다. 승인받은 완료 조건은 [write-pr](../write-pr/SKILL.md)의 `## 완료 조건`에 둔다.
 
 팀이 정해야 하는 보류 항목은 PR의 `정해야 할 것`에 적고, 비개발자에게 그대로 보낼 수 있는 초안을 채팅에 함께 준다.
 

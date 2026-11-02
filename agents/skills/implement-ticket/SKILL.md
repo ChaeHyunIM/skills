@@ -16,7 +16,7 @@ disable-model-invocation: true
 - 구현·검증하고 PR을 준비할 때: [구현하고 PR 준비하기](../agent-loop/references/implementation.md)
 - 코드 품질을 확인할 때: [code-quality](../code-quality/SKILL.md)
 - 검증하고 PR에 기록할 때: [검증과 기록 방법](../agent-loop/references/verification.md)
-- PR 본문을 쓸 때: [PR 본문 양식](../agent-loop/references/pr-body.md)
+- PR 본문을 쓸 때: [write-pr](../write-pr/SKILL.md)
 
 ## 구현할 티켓과 작업 폴더 확인
 
