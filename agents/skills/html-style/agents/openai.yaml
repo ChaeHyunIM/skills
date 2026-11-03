@@ -1,6 +1,0 @@
-interface:
-  display_name: "HTML Style"
-  short_description: "HTML 한 페이지의 글과 디자인을 읽기 쉽게 정리"
-  default_prompt: "이 HTML 페이지를 $html-style로 읽기 쉽게 구성하고 꾸며줘."
-policy:
-  allow_implicit_invocation: false
