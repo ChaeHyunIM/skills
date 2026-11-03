@@ -5,7 +5,7 @@ description: PR 본문을 정해진 양식으로 쓰거나 고친다. PR을 만�
 
 # write-pr
 
-목차: 쓰는 순서 · 양식 · 섹션별 기준 · 다이어그램 선택 · 기록물 첨부 · 쓰지 않는 것 · 기존 PR을 고칠 때
+목차: 쓰는 순서 · 양식 · 섹션별 기준 · 다이어그램 선택 · 기록물 첨부 · GitHub에 저장하기 · 쓰지 않는 것 · 기존 PR을 고칠 때
 
 PR 본문은 사람이 읽는다. 리뷰어가 병합해도 되는지, 배포할 때 무엇을 조심할지, 무엇을 정해야 하는지 판단하는 데 필요한 것만 적는다.
 
@@ -18,7 +18,7 @@ PR 본문은 사람이 읽는다. 리뷰어가 병합해도 되는지, 배포할
 1. 실제 base를 확인하고 `git log <base>..HEAD`와 `git diff <base>...HEAD`로 변경 전체를 읽는다. 연결된 티켓이 있으면 함께 읽는다.
 2. 열린 PR이 있으면 최신 본문을 읽고 [기존 PR을 고칠 때](#기존-pr을-고칠-때)를 따른다.
 3. 아래 양식으로 본문을 쓴다. 섹션마다 해당 기준을 확인한다.
-4. 새 PR은 `gh pr create --body-file <file>`, 기존 PR은 `gh pr edit <PR> --body-file <file>`로 저장하고 게시된 본문을 다시 읽어 확인한다. 사용자가 초안만 원했으면 게시하지 않고 본문을 보여 준다.
+4. 본문을 파일로 저장한 뒤 [GitHub에 저장하기](#github에-저장하기)대로 PR을 만들거나 고치고, 게시된 본문을 다시 읽어 확인한다. 사용자가 초안만 원했으면 게시하지 않고 본문을 보여 준다.
 
 다른 스킬을 진행하다 이 문서를 읽었다면 양식과 기준만 가져다 쓴다. PR을 언제 만들고 무엇을 저장할지는 그 스킬을 따른다.
 
@@ -150,7 +150,7 @@ call tree diff 예시:
 
 형식별 예시는 [show-me](../show-me/SKILL.md)를 참고한다. 별도 HTML 파일을 열어야 하는 형식은 PR 본문에 쓰지 않는다.
 
-call tree는 [calldiff](https://github.com/tanishqkancharla/calldiff)로 추출한 뒤 리뷰에 필요한 부분만 남긴다. 별도 설치 없이 `pnpm dlx`로 실행한다.
+call tree는 [calldiff](https://github.com/tanishqkancharla/calldiff)로 추출한 뒤 리뷰에 필요한 부분만 남긴다. `pnpm`이 있으면 별도 설치 없이 `pnpm dlx`로 실행한다. `pnpm`이 없거나 패키지를 받지 못하면 diff를 직접 읽고 call tree를 쓴다. 추출하지 못했다는 사실은 본문에 적지 않는다.
 
 ```bash
 pnpm dlx calldiff@latest diff <base-sha> <head-sha> --file <진입 파일> --max-depth 2
@@ -160,13 +160,27 @@ pnpm dlx calldiff@latest diff <base-sha> <head-sha> --file <진입 파일> --max
 
 ## 기록물 첨부
 
-스크린샷·영상처럼 리뷰어가 직접 봐야 하는 기록물은 PR에 첨부한다.
+스크린샷·영상처럼 리뷰어가 직접 봐야 하는 기록물은 첨부할 수단이 있을 때 PR에 첨부한다. 첨부는 `gh`의 `--attach`로 한다. `gh`가 없거나 `gh pr edit --help`에 `--attach`가 없으면 아래 마지막 항목의 「첨부가 막히면」을 따른다. GitHub MCP나 REST로 첨부를 흉내 내지 않는다.
 
-- `gh pr edit --help`로 `--attach` 지원 여부를 확인한다. 본문에서 `![이름](./상대경로)`로 참조하고 같은 파일을 `--attach`로 넘긴다. 파일은 cwd 안에 있어야 하고 경로에 공백이 없어야 한다. 파일당 최대 10 MB까지 첨부할 수 있다. 영상은 별도 줄에 첨부해야 플레이어로 표시된다. 재생 호환성을 위해 H.264 MP4를 권장한다.
+- 본문 저장과 같은 `gh` 명령에 `--attach`를 붙인다. 본문에서 `![이름](./상대경로)`로 참조하고 같은 파일을 `--attach`로 넘긴다. 파일은 cwd 안에 있어야 하고 경로에 공백이 없어야 한다. 파일당 최대 10 MB까지 첨부할 수 있다. 영상은 별도 줄에 첨부해야 플레이어로 표시된다. 재생 호환성을 위해 H.264 MP4를 권장한다.
 - 이미지·영상은 목록의 하위 불릿에 넣지 않고 관련 항목 바로 아래 들여쓰기 없는 줄에 둔다. 불릿 안에 넣으면 마커가 이미지 옆으로 밀린다.
 - 변경 전후를 비교할 때는 PR에 보이는 이름을 `Before`·`After`로 쓴다. 표 머리글은 `| Before | After |`, 파일·이미지 alt 이름은 `claim-2-before.png`처럼 짓는다. `base`·`head`는 비교한 커밋 SHA를 밝힐 때만 쓴다.
 - 변경 전후 영상을 나란히 보여 줘야 할 때만, 두 파일을 `--attach`한 임시 코멘트를 올려 `https://github.com/user-attachments/assets/...` 주소를 얻고 HTML 표의 `<video src>`에 넣는다. 게시된 본문에서 재생을 확인한 뒤 임시 코멘트를 지운다.
 - 첨부가 막히면 PR에는 결과·재현 방법·`PR 첨부 미완료: <원인>`을 적고, 채팅으로 로컬 기록물을 전달한다. PR에 로컬 경로를 남기거나 공개 이미지 호스트에 대신 올리지 않는다.
+
+## GitHub에 저장하기
+
+PR을 만들거나 본문을 고칠 때는 아래 중 이번 환경에서 실제로 되는 첫 번째 수단을 쓴다. 설치나 로그인을 새로 하지 않는다.
+
+1. `gh`가 있고 로그인돼 있으면: 새 PR은 `gh pr create --body-file <file>`, 기존 PR은 `gh pr edit <PR> --body-file <file>`.
+2. GitHub MCP·커넥터처럼 PR을 만들고 고치는 도구가 연결돼 있으면 그 도구.
+3. `GH_TOKEN`이나 `GITHUB_TOKEN`이 있으면 REST API. 새 PR은 `POST /repos/<owner>/<repo>/pulls`, 기존 PR은 `PATCH /repos/<owner>/<repo>/pulls/<n>`에 `title`·`body`·`head`·`base`를 보낸다. 토큰 값은 출력하지 않는다.
+
+`gh pr create`가 GraphQL 한도로 실패하면 `gh api`로 같은 REST 요청을 보낸다.
+
+셋 다 안 되면 게시하지 않는다. 본문 파일 경로와 막힌 이유(`gh` 없음, 커넥터 없음, 토큰 없음)를 사용자에게 알리고, 본문은 채팅으로 전달한다. 다른 저장소나 공개 서비스에 대신 올리지 않는다.
+
+어느 수단으로 저장했든 저장한 뒤 같은 수단으로 PR을 다시 읽어 본문이 그대로 들어갔는지 확인한다.
 
 ## 쓰지 않는 것
 
