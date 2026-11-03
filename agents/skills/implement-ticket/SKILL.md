@@ -27,8 +27,10 @@ disable-model-invocation: true
 - 완료 조건이 모호하면 [완료 조건 작성 기준](../agent-loop/references/ticket-criteria.md)으로 뜻을 확인한다. 제품 결정이 필요한 부분은 남겨 두고, 영향받지 않는 조사와 준비는 계속한다.
 - 상태를 `in-progress`로 바꾼다. 새 작업의 base는 사용자가 지정한 브랜치나 메인 체크아웃의 현재 로컬 브랜치로 정한다. `main`이라고 가정하지 않는다.
 
+`SKILL_DIR`은 이 `SKILL.md`가 있는 폴더의 실제 경로로 바꾼다. 스킬이 특정 홈 폴더에 설치돼 있다고 가정하지 않는다.
+
 ```bash
-bash ~/.agents/skills/agent-loop/scripts/prepare-worktree.sh <ascii-slug> [<base>]
+bash "$SKILL_DIR/../agent-loop/scripts/prepare-worktree.sh" <ascii-slug> [<base>]
 ```
 
 기존 작업을 이어갈 때는 PR head 브랜치에서 `agent/` 뒤를 slug로 넘기고 base를 생략한다. 로컬 변경이나 아직 원격에 올리지 않은 커밋이 있으면 보존하고 어느 작업에서 만든 것인지 확인한다. 기존 PR의 worktree를 원격 브랜치에 맞출 때는 작업 환경 문서의 fast-forward 규칙을 따른다.

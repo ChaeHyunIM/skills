@@ -36,8 +36,10 @@ disable-model-invocation: true
 
 승인을 기다리는 동안 영향받지 않는 조사는 계속한다. 승인받은 완료 조건은 그대로 PR 본문의 `## 완료 조건`에 옮긴다. 구현하다가 뜻을 바꿔야 하면 사용자에게 다시 확인받는다.
 
+`SKILL_DIR`은 이 `SKILL.md`가 있는 폴더의 실제 경로로 바꾼다. 스킬이 특정 홈 폴더에 설치돼 있다고 가정하지 않는다.
+
 ```bash
-bash ~/.agents/skills/agent-loop/scripts/prepare-worktree.sh <ascii-slug> [<base>]
+bash "$SKILL_DIR/../agent-loop/scripts/prepare-worktree.sh" <ascii-slug> [<base>]
 ```
 
 기존 작업을 이어갈 때는 PR head 브랜치에서 `agent/` 뒤를 slug로 넘기고 base를 생략한다. 로컬 변경이나 아직 원격에 올리지 않은 커밋이 있으면 보존하고 어느 작업에서 만든 것인지 확인한다.
