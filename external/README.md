@@ -17,7 +17,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 
 | 출처 | 고른 스킬 |
 |---|---|
-| [emilkowalski/skill](https://github.com/emilkowalski/skill) | animate, animate-expo, animation-performance, animation-vocabulary, apple-design, ask-sonner, break-ui, emil-design-eng, find-animation-opportunities, improve-animations, mobile-native, pick-ui-library, prototype, review-animations, write-swift |
+| [emilkowalski/skill](https://github.com/emilkowalski/skill) | 전부 (`--skill '*'`) |
 | [planetscale/skills](https://github.com/planetscale/skills) | planetscale-* 15개 전부 (`--skill '*'`) |
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
