@@ -56,8 +56,6 @@ npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/create-
 npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintain-verification-skill -g -y
 ```
 
-기능 맵을 미리 채우는 3단계는 원본에 남겨 두고, 호출할 때 건너뛰도록 지시한다.
-
 ### chimstack이 기대는 스킬
 
 아래 스킬은 `chimstack/` 스킬이 `~/.agents/skills/<이름>/SKILL.md`로 직접 읽는다. 지우면 그쪽이 깨진다.
