@@ -78,4 +78,4 @@ Why this is a hard rule: Images bills per unique transformation at request time,
 
 ## Do not touch the git remote
 
-Never rewrite a git remote URL, in particular not HTTPS → SSH. The user drives push/pull with lazygit but also opens GitHub Desktop, which breaks on an SSH remote. If a push fails, leave the remote alone and ask the user to push.
+Never rewrite a git remote URL, in particular not HTTPS → SSH. The user drives push/pull with lazygit. If a push fails, leave the remote alone and ask the user to push.
