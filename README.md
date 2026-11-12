@@ -87,7 +87,6 @@ chimstack 스킬이 실행하는 명령줄 도구다. 스킬은 없는 도구를
 | ImageMagick | `write-pr` PR 이미지에 번호·화살표 표시 | `brew install imagemagick` |
 | Node | `write-pr` 이미지 표시 스크립트 | nvm 등으로 설치 |
 | `pnpm` | `write-pr` call tree 추출(`calldiff`) | `brew install pnpm` |
-| `python3` | `site-hub` | macOS 기본 |
 
 ## 스킬을 새로 만들 때
 
