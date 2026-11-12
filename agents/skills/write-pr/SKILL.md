@@ -29,7 +29,7 @@ PR 본문에 커밋이나 diff를 그대로 풀어 쓰지 않는다. 리뷰어�
 ## 양식
 
 ```markdown
-Closes YOU-000 · base: `main`
+Closes <티켓 ID> · base: `main`
 
 <!-- decisions:start -->
 > [!IMPORTANT]
