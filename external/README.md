@@ -41,6 +41,23 @@ npx skills update -g          # 받은 스킬 전부 갱신
 - `code-quality` → postgres, react-useeffect, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, turborepo
 - `write-pr` → show-me
 
+## Rex
+
+Rex 터미널이 자기 CLI로 스킬과 세션 시작 훅을 함께 설치한다. 스킬 본문은 짧은 껍데기이고,
+쓸 때마다 `rex` 명령에서 안내문을 받아 오므로 Rex를 올리면 내용도 따라 바뀐다.
+
+```bash
+rex skill setup      # 이 머신에서 찾은 에이전트 전부에 스킬과 훅 설치. 다시 돌려도 안전하다
+rex skill status     # 설치 상태 확인
+```
+
+| 에이전트 | 스킬 | 훅 |
+|---|---|---|
+| Claude Code | `~/.claude/skills/rex` | `~/.claude/settings.json` |
+| Codex · OpenCode · Pi | `~/.agents/skills/rex` | Codex만 `~/.codex/hooks.json` |
+
+세션 이름을 작업에 맞게 붙이는 `--session-naming`은 쓰지 않는다.
+
 ## 플러그인
 
 플러그인은 런타임이 설정 파일을 읽어 켜고 끈다. 여기에는 무엇을 쓰는지만 적고, 켜고 끄는 값은 각 설정 파일이 정본이다.
@@ -70,7 +87,6 @@ Codex의 planetscale 플러그인과 위 `planetscale/skills`는 내용이 겹�
 
 도구가 직접 설치하고 갱신하는 것들이다.
 
-- `rex` — `rex skill setup`
 - `~/.claude/skills/synced/` — claude.ai가 동기화
 - `~/.codex/skills/.system/` — Codex 내장
 - `~/.codex/skills/`의 Cloudflare 스킬(basin, cf-cli, k2 …) — 출처 확인 필요
