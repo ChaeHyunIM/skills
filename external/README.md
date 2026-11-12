@@ -31,6 +31,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [planetscale/skills](https://github.com/planetscale/skills) | 전부. 공식 README대로 `npx skills add planetscale/skills -g -y` |
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
 | [cloudflare/skills](https://github.com/cloudflare/skills) | 전부. Codex에만 받는다 (아래 Cloudflare 절) |
+| [mobbin/skills](https://github.com/mobbin/skills) | 전부. 공식 README대로 `npx skills add mobbin/skills -g -y`. MCP는 Claude가 claude.ai 커넥터, Codex가 `codex mcp add`로 붙인다 |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
 | [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | react-useeffect |
 | [deckardger/tanstack-agent-skills](https://github.com/deckardger/tanstack-agent-skills) | tanstack-query-best-practices |
