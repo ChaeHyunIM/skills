@@ -43,8 +43,8 @@ npx skills update -g          # 받은 스킬 전부 갱신
 
 ## Rex
 
-[Rex](https://www.superlogical.com/rex/) 터미널이 자기 CLI로 스킬과 세션 시작 훅을 함께 설치한다. 스킬 본문은 짧은 껍데기이고,
-쓸 때마다 `rex` 명령에서 안내문을 받아 오므로 Rex를 올리면 내용도 따라 바뀐다.
+[Rex](https://www.superlogical.com/rex/)는 `rex` 명령으로 스킬과 세션 시작 훅을 같이 깐다.
+스킬 파일에는 내용이 거의 없고, 쓸 때마다 `rex`에서 안내문을 받아 온다. 그래서 Rex만 업데이트하면 스킬 내용도 같이 바뀐다.
 
 ```bash
 rex skill setup      # 이 머신에서 찾은 에이전트 전부에 스킬과 훅 설치. 다시 돌려도 안전하다
