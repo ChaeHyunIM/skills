@@ -24,7 +24,7 @@ technical terms and English-natural concepts in English.
 ## 1. Output location & file rules
 
 - Path: `~/Desktop/worklog/YYYY-MM-DD.md` — **one file per day**. Date comes from runtime (`worklog_context.sh`'s `DATE`).
-- The date is **the day the work happened**: today for the current session, or the session's own date (the digest's `Session date (KST)`) when documenting a past transcript. Never file past work under today's date.
+- The date is today's, from `worklog_context.sh`'s `DATE`.
 - Create the directory if it doesn't exist.
 - **MODE=create**: new file. One H1 day title at the top, then the session block below it.
 - **MODE=append**: a second session on the same day. Do not overwrite — **append** a `---` divider + the new session block at the very end. Do not re-emit the H1 day title.
@@ -75,11 +75,9 @@ rename them (as in §5). Renumber the remaining sections from 1 (no gaps).
 The title, summary blockquote, and 배경 are **the narrative's starting point**.
 Plant "where this started from" first so the later sections read as cause-and-effect.
 
-**세션 ID** — always include it in the meta line, sourced per input mode:
-current-session mode uses `worklog_context.sh`'s `SESSION_ID` output when Codex
-provides one; explicit-file mode uses the digest header's
-`Session ID` (the transcript's `<uuid>.jsonl` filename). If somehow unavailable
-in either mode, omit the `· **세션 ID:** ...` segment rather than writing a
+**세션 ID** — always include it in the meta line, from `worklog_context.sh`'s
+`SESSION_ID` output (it reads the runtime's session variable). If it is
+`unknown`, omit the `· **세션 ID:** ...` segment rather than writing a
 placeholder — never fabricate one.
 
 ## 3. Commit-reference format
@@ -88,7 +86,7 @@ placeholder — never fabricate one.
 - Pick only commits **actually produced by this session** (matching its topic/time). Do not cite pre-session or unrelated commits.
 - Put a one-line meta line **directly under** the header of any section that produced code changes (implementation/decision/debugging):
 
-  > 📌 커밋 참조: `8f9eaafa` — refactor(doko-app): 저장 폴더 시트를 탭 즉시저장으로... (2026-06-08 19:30)
+  > 📌 커밋 참조: `a1b2c3d` — refactor(mobile): 저장 폴더 시트를 탭 즉시저장으로... (2026-06-08 19:30)
 
 - Multiple commits in one section → list them in ascending time order.
 - 7-char short hash. The message may be trimmed if long, but keep type·scope.
@@ -151,7 +149,7 @@ definition — write as if **re-explaining to yourself after forgetting everythi
 
 Recipe (in this order):
 1. **Plain language first** — one sentence for the intuition, then layer in technical precision.
-2. **Ground it in what was built this session** — no abstract definitions. Tie it to real code: "doko의 `/i` 라우트가 이 방식", "우리 `onSettled`의 `=== 1` 가드가 이거".
+2. **Ground it in what was built this session** — no abstract definitions. Tie it to real code: "이 앱의 `/i` 라우트가 이 방식", "우리 `onSettled`의 `=== 1` 가드가 이거".
 3. **Why it exists** — the problem this concept solves; what breaks without it.
 4. **Gotcha / misconception** — explicitly call out the trap or confusion actually hit this session. This is the heart of the recall value.
 
@@ -219,4 +217,4 @@ clarified**. Open with 배경, close with 메모 / 남은 것.
 - Headers carry meaning ("배경 — 왜 손댔나" yes, "섹션 2" no).
 - Use tables liberally (option comparison, verdicts, per-file changes, final summaries).
 - Inline code comments are **WHY**-oriented (don't restate the what that identifiers already say).
-- Do not state speculation as fact. If the transcript never confirmed it, omit it or mark it "추정".
+- Do not state speculation as fact. If the session never confirmed it, omit it or mark it "추정".

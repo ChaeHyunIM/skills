@@ -1,11 +1,11 @@
 ---
 name: write-worklog
-description: Analyzes a Claude Code development session (the current in-context conversation, or a transcript file you point it at) and writes a structured Korean engineering work log to ~/Desktop/worklog/YYYY-MM-DD.md — capturing decisions and trade-offs, implementations with rationale, recall-optimized concept explanations, debugging narratives (symptom→hypothesis→investigation→root cause→fix), and the causal flow between them, with inline git commit references. Use when the user asks to document, summarize, or log a dev session. Triggers on requests, in Korean or English, to write a worklog or document the session (워크로그, 세션 정리, 작업 기록).
+description: Analyzes the current development session in Claude Code or Codex (the in-context conversation) and writes a structured Korean engineering work log to ~/Desktop/worklog/YYYY-MM-DD.md — capturing decisions and trade-offs, implementations with rationale, recall-optimized concept explanations, debugging narratives (symptom→hypothesis→investigation→root cause→fix), and the causal flow between them, with inline git commit references. Use when the user asks to document, summarize, or log a dev session. Triggers on requests, in Korean or English, to write a worklog or document the session (워크로그, 세션 정리, 작업 기록).
 ---
 
 # Write Worklog
 
-Analyze a session and write a Korean engineering work log to
+Analyze the session in progress and write a Korean engineering work log to
 `~/Desktop/worklog/YYYY-MM-DD.md`. The skeleton, per-section how-to, quality
 bar, and commit format all live in **`references/worklog-structure.md` — read
 it before writing.**
@@ -17,42 +17,24 @@ closure, idempotency, optimistic, `onMutate`, thundering herd, etc.) — do not
 force-translate them. The Korean section headers shown in the structure
 reference's templates are literal output strings: emit them as-is.
 
-## Input modes (determine first)
+**Input:** the session in progress. Analyze your **own context directly** — no
+parsing step.
 
-- **Default — document the current conversation**: if the user does not point
-  to a separate file, the target is the session in progress. Analyze your **own
-  context directly** — no parsing step. (Most invocations are this mode.)
-- **Explicit — transcript file**: if the user gives a `.jsonl` path or names a
-  past session, document that file. Do not read the whole file; build a digest
-  with the extractor:
-  ```bash
-  python3 scripts/extract_transcript.py <path.jsonl> --results [--thinking]
-  ```
-  `--results` surfaces tool errors / command output (useful for debugging
-  sessions); `--thinking` surfaces decision rationale. Turn both on when
-  debugging is central. Transcripts usually live at
-  `~/.claude/projects/<project>/<uuid>.jsonl`. The digest header's
-  **`Session date (KST)`** value is the worklog filename / H1 date — a past
-  session files under **the day the work happened, not today**. Pass that date
-  as the 3rd argument (date_override) to the context script in step 1.
+**Paths:** `<skill-dir>` below is the directory that holds this SKILL.md.
+Substitute its real path — the script is not in the working directory.
 
 ## Workflow
 
 ### 1. Gather runtime context
 Run from the repo root (current working dir):
 ```bash
-bash scripts/worklog_context.sh
-# Documenting a past transcript? Pass that session's date as the 3rd arg:
-# bash scripts/worklog_context.sh ~/Desktop/worklog 25 2026-06-08
+bash <skill-dir>/scripts/worklog_context.sh
 ```
 Read `DATE`, `TARGET` (file path), `MODE` (create/append), `SESSION_ID`, and the
-recent-commit list (`hash|date|author|subject`) from the output. In
-current-session mode, run with no args (today's date) — `SESSION_ID` comes from
-`CLAUDE_CODE_SESSION_ID`; in explicit-file mode, pass the digest's
-`Session date (KST)` as the 3rd arg so it files under that date, and use the
-digest header's own `Session ID` line instead (the transcript's `<uuid>.jsonl`
-filename) — the two are unrelated sessions, don't mix them up. If this is not
-a git repo, the commit section comes back empty — proceed without commit refs.
+recent-commit list (`hash|date|author|subject`) from the output. `SESSION_ID`
+comes from the runtime's session variable and is `unknown` when the runtime
+does not expose one (then omit the session-id segment). If this is not a git
+repo, the commit section comes back empty — proceed without commit refs.
 
 ### 2. Load the structure & quality bar
 **Read `references/worklog-structure.md`.** The output-location rules, document
@@ -85,15 +67,18 @@ Format is structure doc §3. Do not cite unrelated or pre-session commits.
 ### 5. Write / append
 - **MODE=create**: create the `TARGET` directory if missing, then write the H1
   day title + the session block.
-- **MODE=append**: do **not** Read the whole existing file and Write it back —
+- **MODE=append**: do **not** read the whole existing file and write it back —
   on a file that has grown to hundreds of lines, re-emitting all of it inside
-  one Write call takes minutes with no visible progress, reads as a hung/broken
-  skill, and invites the user to interrupt before it ever finishes. Instead, do
-  a **true append that never touches existing bytes**:
-  1. `Write` the new session block ONLY (starting with `\n\n---\n\n`, then the
-     `##` heading) to a scratch file, e.g.
-     `<scratchpad>/worklog_session_append.md`.
-  2. `Bash`: `cat <scratch-file> >> <TARGET>`.
+  one file-write call takes minutes with no visible progress, reads as a
+  hung/broken skill, and invites the user to interrupt before it ever finishes.
+  Instead, do a **true append that never touches existing bytes**:
+  1. Write the new session block ONLY, starting at its `##` heading, to a
+     scratch file outside the repo — the session scratchpad if the runtime
+     gives one, otherwise a `mktemp -d` directory.
+  2. Run:
+     ```bash
+     { printf '\n\n---\n\n'; cat <scratch-file>; } >> <TARGET>
+     ```
   This is O(new content) regardless of how large the day's file already is.
   Do not re-emit the existing H1 (`#`); do not alter a single character of the
   existing sessions — the scratch file must contain only the new block.

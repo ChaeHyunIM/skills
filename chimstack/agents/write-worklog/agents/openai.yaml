@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write Worklog"
+  short_description: "개발 세션을 한국어 엔지니어링 워크로그로 정리합니다."
+  default_prompt: "$write-worklog로 이 세션을 워크로그로 정리해 줘."

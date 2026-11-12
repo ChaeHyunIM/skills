@@ -1,31 +1,22 @@
 #!/usr/bin/env bash
 # Gather, in one shot, the runtime context needed to write a worklog:
 #   - today's date / target file path / file-exists (append vs create)
-#   - current Claude Code session id (CLAUDE_CODE_SESSION_ID)
+#   - current session id, from whichever runtime variable is set
+#     (CLAUDE_CODE_SESSION_ID, CODEX_THREAD_ID, CODEX_SESSION_ID)
 #   - recent commits in the current working dir (hash|isodate|author|subject)
 #
 # If this is not a git repo (or git is missing), leave the commit section empty
 # and exit cleanly (spec: omit commits without erroring when there are none).
 #
-# Usage:  worklog_context.sh [worklog_dir] [commit_count] [date_override]
+# Usage:  worklog_context.sh [worklog_dir] [commit_count]
 #   worklog_dir    default ~/Desktop/worklog
 #   commit_count   number of recent commits to show (default 25)
-#   date_override  YYYY-MM-DD. When documenting a past transcript, force the file
-#                  to use that session's date instead of today (pass the
-#                  "Session date (KST)" value from extract_transcript.py).
-#                  Empty -> today's date.
 
 set -u
 
 WORKLOG_DIR="${1:-$HOME/Desktop/worklog}"
 COMMIT_COUNT="${2:-25}"
-DATE_OVERRIDE="${3:-}"
-
-if [ -n "$DATE_OVERRIDE" ]; then
-  DATE="$DATE_OVERRIDE"
-else
-  DATE="$(date +%Y-%m-%d)"
-fi
+DATE="$(date +%Y-%m-%d)"
 NOW="$(date +%H:%M)"
 TARGET="$WORKLOG_DIR/$DATE.md"
 
@@ -41,7 +32,7 @@ else
   echo "MODE: create"
 fi
 
-echo "SESSION_ID: ${CLAUDE_CODE_SESSION_ID:-unknown}"
+echo "SESSION_ID: ${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-unknown}}}"
 
 echo ""
 echo "=== RECENT COMMITS (hash|date|author|subject) ==="
