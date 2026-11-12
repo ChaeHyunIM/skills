@@ -93,6 +93,10 @@ rex skill status     # 설치 상태 확인
 | [expo/skills](https://github.com/expo/skills) | expo |
 | [getsentry/plugin-codex](https://github.com/getsentry/plugin-codex) | sentry |
 
+Expo 플러그인의 `expo-animation`은 Emil Kowalski와 같이 만든 스킬이라 위 emilkowalski의 `animate-expo`와 내용이 같다.
+Claude에는 Expo 플러그인이 없으니 `animate-expo`를 그대로 쓰고, Codex에서만 같은 설정 파일의 `[[skills.config]]`로
+`~/.agents/skills/animate-expo/SKILL.md`를 끈다.
+
 ### PlanetScale
 
 스킬의 정본은 위 `planetscale/skills` 하나다. Codex용 플러그인 [planetscale/codex-plugin](https://github.com/planetscale/codex-plugin)은
