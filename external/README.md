@@ -6,6 +6,16 @@
 - 설치 기록: `~/.agents/.skill-lock.json`. `skills` CLI가 쓰는 이 머신의 상태라서 저장소에 넣지 않는다.
 - 새 머신에서는 에이전트에게 "external/README.md대로 설치해줘"라고 하면 된다.
 
+## 원칙
+
+서비스 제공사가 직접 배포하는 원본에 붙는다. AI사 마켓플레이스를 한 번 거친 사본은 원본보다 뒤처지거나,
+같은 스킬을 다른 이름으로 한 벌 더 싣고 오는 경우가 있었다. 예를 들어 Codex의 Cloudflare 앱은 원본 22개 중 13개만 실었고, 이름 앞에 `app-…` ID가 붙어 나왔다.
+
+- **스킬**은 제공사의 스킬 레포를 `npx skills`로 받는다. `~/.agents/skills`에 한 벌만 두고 두 런타임이 같이 쓴다.
+- **MCP**는 계정 단위 커넥터가 있으면 그쪽을 쓴다. Claude는 claude.ai 커넥터가 웹·데스크톱·클라우드·로컬에 모두 따라온다.
+  Codex는 클라우드 작업에서 ChatGPT 앱(커넥터)이 동작하지 않아서, 제공사 안내대로 `codex mcp add`로 로컬에 등록한다.
+- **플러그인**은 스킬과 MCP 말고 다른 것이 있을 때만 쓴다. 예를 들어 Expo 플러그인에는 훅이 들어 있다.
+
 ## `skills` CLI
 
 [vercel-labs/skills](https://github.com/vercel-labs/skills). 레포에서 고른 스킬만 받는다.
@@ -20,6 +30,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [emilkowalski/skill](https://github.com/emilkowalski/skill) | 전부 (`--skill '*'`) |
 | [planetscale/skills](https://github.com/planetscale/skills) | 전부. 공식 README대로 `npx skills add planetscale/skills -g -y` |
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
+| [cloudflare/skills](https://github.com/cloudflare/skills) | 전부. Codex에만 받는다 (아래 Cloudflare 절) |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
 | [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | react-useeffect |
 | [deckardger/tanstack-agent-skills](https://github.com/deckardger/tanstack-agent-skills) | tanstack-query-best-practices |
@@ -112,10 +123,27 @@ codex mcp add planetscale --url https://mcp.pscale.dev/mcp/planetscale
 Claude Code는 claude.ai의 PlanetScale 커넥터로 연결돼 있어서 따로 등록하지 않는다.
 CLI는 `pscale` 0.292.0 이상이 필요하고 `pscale auth check --format json`으로 인증을 확인한다.
 
+### Cloudflare
+
+[공식 agent setup 안내](https://developers.cloudflare.com/agent-setup/prompt.md)를 따른다. 원본은 `cloudflare/skills` 하나다.
+
+**Claude Code**는 claude.ai에서 동기화되는 `cloudflare` 플러그인이 같은 레포의 스킬 22개와 Cloudflare MCP를 함께 싣고 있다.
+안내의 `claude plugin install cloudflare@cloudflare`와 같은 내용이라 따로 설치하지 않는다. 또 설치하면 두 벌이 된다.
+
+**Codex**는 안내의 명령에 `-a codex`를 붙여 Codex에만 받는다. 붙이지 않으면 `~/.claude/skills`에도 링크가 생겨서
+Claude에서 플러그인의 `cloudflare:*`와 두 번 잡힌다.
+
+```bash
+npx -y skills add cloudflare/skills --skill '*' --yes --global -a codex
+codex mcp add cloudflare --url https://mcp.cloudflare.com/mcp
+codex mcp login cloudflare
+```
+
+ChatGPT의 Cloudflare 앱은 쓰지 않는다. 안내의 선택 항목인 `cf` CLI도 설치하지 않는다. 프로젝트에서 Wrangler를 쓴다.
+
 ## 기록하지 않는 것
 
 도구가 직접 설치하고 갱신하는 것들이다.
 
-- `~/.claude/skills/synced/` — claude.ai가 동기화
+- `~/.claude/skills/synced/`, `~/.claude/plugins/synced/` — claude.ai가 동기화
 - `~/.codex/skills/.system/` — Codex 내장
-- `~/.codex/skills/`의 Cloudflare 스킬(basin, cf-cli, k2 …) — 출처 확인 필요
