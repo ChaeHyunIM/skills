@@ -30,9 +30,22 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [humanlayer/skills](https://github.com/humanlayer/skills) | show-me |
 | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | install-anti-slop |
 
-`create-verification-skill` · `maintain-verification-skill`은 받은 뒤 스킬 생성 경로만 `.cursor/skills/`에서
-`.agents/skills/`로 바꿔 쓴다. 갱신할 때도 경로만 다시 바꾼다. 기능 맵을 미리 채우는 3단계는 원본에 남겨 두고,
-호출할 때 건너뛰도록 지시한다.
+### cursor/plugins의 검증 스킬 두 개
+
+`create-verification-skill` · `maintain-verification-skill`은 원본을 고치지 않는다. 원본은 프로젝트 검증 스킬을
+`.cursor/skills/`에 만들고 찾지만 우리는 `.agents/skills/`를 쓴다. 이 차이는 전역 지침(`claude/CLAUDE.md`,
+`codex/AGENTS.md`)과 `agent-loop` 계약에서 `.cursor/skills/`를 `.agents/skills/`로 바꿔 읽게 해서 맞춘다.
+그래서 `npx skills update`로 그대로 갱신해도 된다.
+
+받을 때는 `pstack/skills/` 경로를 직접 준다. 이름만 주면 같은 레포의 Claude Code용 사본(`harness/pstack/claude-code/`)이
+잡히는데, 이 사본은 스킬 폴더 밖의 문서를 읽으라고 해서 링크가 깨진다.
+
+```bash
+npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/create-verification-skill -g -y
+npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintain-verification-skill -g -y
+```
+
+기능 맵을 미리 채우는 3단계는 원본에 남겨 두고, 호출할 때 건너뛰도록 지시한다.
 
 ### chimstack이 기대는 스킬
 

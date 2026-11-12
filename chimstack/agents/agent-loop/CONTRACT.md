@@ -8,6 +8,8 @@
 - worktree 설정: 저장소의 `.claude/agent-loop/config`
 - 앱 실행과 검증 방법: 저장소의 프로젝트 검증 스킬(`.agents/skills/verify-<app>/`)
 
+`create-verification-skill` · `maintain-verification-skill`에 나오는 `.cursor/skills/`는 `.agents/skills/`로 바꿔 읽는다. 두 스킬은 원본 그대로 받아 쓰므로 파일을 고치지 않는다.
+
 ## 스킬별 역할
 
 | 스킬 | 하는 일 |

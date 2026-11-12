@@ -41,6 +41,8 @@ How to substitute it in Codex or elsewhere is undecided.
 
 Also note `find ~/.claude/skills -maxdepth 2` does not follow symlinks — use `-L` or `readlink -f` first.
 
+**pstack verification skills.** `create-verification-skill` and `maintain-verification-skill` come unedited from cursor/plugins and say `.cursor/skills/`. Read every `.cursor/skills/` in them as `.agents/skills/` — project verification skills live in `.agents/skills/verify-<app>/`. Never patch the installed files; the next `npx skills update` would overwrite the patch.
+
 ## 다른 사람에게 전달할 글은 SOUL을 참고한다
 
 Slack 메시지·DM, Linear·GitHub 이슈와 PR의 본문·코멘트, 리뷰 답글, 공지처럼 다른 사람에게 전달할 글을 작성하거나 다듬기 전에 [SOUL.md](../agents/SOUL.md)를 읽고 채현의 말투와 소통 방식을 적용한다. 실제 게시뿐 아니라 사용자가 복사해 보낼 초안에도 적용하며, 태그 유무로 적용 여부를 나누지 않는다. 전용 스킬 없이 도구로 직접 작성할 때도 같다.

@@ -6,6 +6,10 @@ Slack 메시지·DM, Linear·GitHub 이슈와 PR의 본문·코멘트, 리뷰 �
 
 SOUL을 참고하는 것은 게시 승인이 아니다. 게시 여부는 아래 승인 규칙과 현재 사용자의 지시를 따른다.
 
+## pstack 검증 스킬
+
+`create-verification-skill` · `maintain-verification-skill`은 cursor/plugins에서 원본 그대로 받은 스킬이라 `.cursor/skills/`라고 적혀 있다. 이 두 스킬의 `.cursor/skills/`는 모두 `.agents/skills/`로 바꿔 읽는다. 프로젝트 검증 스킬은 `.agents/skills/verify-<app>/`에 둔다. 설치된 파일은 고치지 않는다. 다음 `npx skills update`에서 덮어써진다.
+
 ## 사람이 읽는 코멘트는 승인받고 올린다
 
 **팀원이 최소 1명 태그되어 읽어야 하는 글이면** — Linear 이슈 코멘트, PR 코멘트, Slack 메시지 무엇이든 — 에이전트가 직접 게시하지 않는다. 초안만 내놓고 사람의 승인을 받은 뒤에 올린다.
