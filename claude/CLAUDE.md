@@ -4,20 +4,21 @@ Before writing or editing a Workflow script, and before spawning multiple subage
 
 `/code-review` is no exception when it generates a local workflow. Invoke `workflow-tiering` before creating the script and apply the five-stage assignment (Scope · Find · Verify · Sweep · Synthesize) from that skill's `/code-review` section. A level passed by the user (high · xhigh · max) is a **ceiling**, not a flat value for every stage.
 
-## Creating a new skill — home is `~/.agents/skills/`
+## Creating a new skill — home is `chimstack/agents/` in the skills repo
 
-Claude Code runs **alongside other coding agents** (Codex and others). So a skill's canonical copy lives in the runtime-neutral home `~/.agents/skills/<name>/`, and `~/.claude/skills/<name>` is a **symlink** pointing there. This holds even when `/skill-creator` is invoked — if the skill-creator skill says to write directly into `~/.claude/skills/`, this rule wins. Most existing skills already follow this layout.
+The skills repo (`~/Desktop/skills`) holds **only skills the user wrote**, under `chimstack/`. Claude Code runs **alongside other coding agents** (Codex and others), so a new skill's canonical copy lives in the runtime-neutral `chimstack/agents/<name>/`. It reaches the runtimes through `~/.agents/skills/<name>` (a symlink into the repo), and `~/.claude/skills/<name>` is a relative symlink to that. This holds even when `/skill-creator` is invoked — if the skill-creator skill says to write directly into `~/.claude/skills/` or `~/.agents/skills/`, this rule wins.
 
 ```bash
-mkdir -p ~/.agents/skills/<name>
+mkdir -p ~/Desktop/skills/chimstack/agents/<name>
+ln -s ~/Desktop/skills/chimstack/agents/<name> ~/.agents/skills/<name>
 ln -s ../../.agents/skills/<name> ~/.claude/skills/<name>
 ```
 
-Create the link with a **relative path** (`../../.agents/skills/<name>`) resolved from `~/.claude/skills/`, matching the existing links.
+`~/.agents/skills/` itself is a **real directory**: skills installed from others (`npx skills`) live there as real files and are never copied into the repo. When the user adds someone else's skill, record its source and chosen skill names in the repo's `external/README.md` instead. A chimstack skill that reads an external one points at `~/.agents/skills/<name>/SKILL.md`, not a relative path — external skills are outside the repo.
 
-### Exception — Claude-specific skills go in `~/.claude/skills/` as real directories
+### Exception — Claude-specific skills go in `chimstack/claude/`
 
-If a skill depends on **functionality that only exists in Claude Code**, do not symlink it — create it directly under `~/.claude/skills/<name>/`. The single test is: «would this skill still work in another runtime?» Any one of the following makes it Claude-specific:
+If a skill depends on **functionality that only exists in Claude Code**, create it under `chimstack/claude/<name>/` and link `~/.claude/skills/<name>` straight to it (not through `~/.agents/skills`, or Codex would pick it up). The single test is: «would this skill still work in another runtime?» Any one of the following makes it Claude-specific:
 
 - The skill drives Workflow tool scripts, Agent subagents, or Artifacts
 - It relies on nested-session tricks such as `claude -p` or `--output-format stream-json`
@@ -29,11 +30,11 @@ In that case, leave a **TODO for other runtimes** at the bottom of SKILL.md. No 
 ```markdown
 ## TODO — other runtimes
 
-This skill lives in `~/.claude/skills/` because it depends on <specific Claude-only capability>.
+This skill lives in `chimstack/claude/` because it depends on <specific Claude-only capability>.
 How to substitute it in Codex or elsewhere is undecided.
 ```
 
-`~/.agents/.skill-lock.json` holds the install records. Two pitfalls when reading this layout:
+`~/.agents/.skill-lock.json` holds the install records of external skills (machine state, not in the repo). Two pitfalls when reading this layout:
 
 - **`agents/openai.yaml` says nothing about Claude.** It is the portable-skill manifest other runtimes read (`interface`, `policy.allow_implicit_invocation`). Claude Code reads only `disable-model-invocation` in the SKILL.md frontmatter, so one folder can carry different policies per runtime. Never conclude "this is blocked in Claude" from that file.
 - **Same name ≠ same skill.** `~/.agents/skills/implement` was once an unrelated 15-line general skill while the loop's `implement` lived elsewhere. Open both before calling one an outdated copy.
