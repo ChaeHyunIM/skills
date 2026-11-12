@@ -95,6 +95,7 @@ rex skill status     # 설치 상태 확인
 ```
 /plugin marketplace add anthropics/claude-plugins-official
 /plugin install figma@claude-plugins-official
+/plugin install typescript-lsp@claude-plugins-official
 ```
 
 **Codex** — [dotfiles](https://github.com/ChaeHyunIM/dotfiles)의 `codex/config.toml`
