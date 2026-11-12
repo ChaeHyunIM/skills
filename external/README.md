@@ -18,7 +18,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | 출처 | 고른 스킬 |
 |---|---|
 | [emilkowalski/skill](https://github.com/emilkowalski/skill) | 전부 (`--skill '*'`) |
-| [planetscale/skills](https://github.com/planetscale/skills) | planetscale-* 15개 전부 (`--skill '*'`) |
+| [planetscale/skills](https://github.com/planetscale/skills) | 전부. 공식 README대로 `npx skills add planetscale/skills -g -y` |
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
 | [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | react-useeffect |
@@ -90,11 +90,23 @@ rex skill status     # 설치 상태 확인
 
 | 마켓플레이스 | 플러그인 |
 |---|---|
-| [planetscale/codex-plugin](https://github.com/planetscale/codex-plugin) | planetscale |
 | [expo/skills](https://github.com/expo/skills) | expo |
 | [getsentry/plugin-codex](https://github.com/getsentry/plugin-codex) | sentry |
 
-Codex의 planetscale 플러그인과 위 `planetscale/skills`는 내용이 겹칠 수 있다. Codex에서 같은 스킬이 두 번 보이면 한쪽을 뺀다.
+### PlanetScale
+
+스킬의 정본은 위 `planetscale/skills` 하나다. Codex용 플러그인 [planetscale/codex-plugin](https://github.com/planetscale/codex-plugin)은
+같은 스킬을 `planetscale-` 접두사 없는 이름으로 한 벌 더 싣고 있어서, 깔면 Codex에 15쌍이 두 번 잡힌다. 그래서 쓰지 않는다.
+
+그 플러그인에 같이 들어 있던 MCP는 [공식 안내](https://planetscale.com/docs/agent-setup/prompt)대로 따로 등록한다.
+처음 등록할 때 브라우저에서 OAuth 인증을 한 번 거친다.
+
+```bash
+codex mcp add planetscale --url https://mcp.pscale.dev/mcp/planetscale
+```
+
+Claude Code는 claude.ai의 PlanetScale 커넥터로 연결돼 있어서 따로 등록하지 않는다.
+CLI는 `pscale` 0.292.0 이상이 필요하고 `pscale auth check --format json`으로 인증을 확인한다.
 
 ## 기록하지 않는 것
 
