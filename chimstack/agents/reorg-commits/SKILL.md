@@ -39,13 +39,11 @@ git worktree add "$WORKTREE_DIR" -b "$REORG_BRANCH" <start>^
 
 All subsequent git operations use `-C "$WORKTREE_DIR"`.
 
-### 3. Analyze (Parallel Subagents)
+### 3. Analyze
 
-Spawn exactly two read-only subagents in parallel using the host runtime's native subagent mechanism, then wait for both results:
+Run `git diff --name-status <start>^..<end>` and `git log --oneline --name-only <start>^..<end>` and build `{ file -> changeType, touchedInCommits[] }`.
 
-**Agent A — File Change Map**: Run `git diff --name-status <start>^..<end>` and `git log --oneline --name-only <start>^..<end>`. Build `{ file -> changeType, touchedInCommits[] }`.
-
-**Agent B — Concern Grouping**: Read the file list from the diff, classify each file into a concern group following `references/algorithm.md`. Produce a proposed grouping:
+Classify each file into a concern group following `references/algorithm.md` and produce a proposed grouping:
 
 ```
 Group 1: feat(db): <설명>

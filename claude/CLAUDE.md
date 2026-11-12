@@ -37,7 +37,7 @@ How to substitute it in Codex or elsewhere is undecided.
 `~/.agents/.skill-lock.json` holds the install records of external skills (machine state, not in the repo). Two pitfalls when reading this layout:
 
 - **`agents/openai.yaml` says nothing about Claude.** It is the portable-skill manifest other runtimes read (`interface`, `policy.allow_implicit_invocation`). Claude Code reads only `disable-model-invocation` in the SKILL.md frontmatter, so one folder can carry different policies per runtime. Never conclude "this is blocked in Claude" from that file.
-- **Same name ≠ same skill.** `~/.agents/skills/implement` was once an unrelated 15-line general skill while the loop's `implement` lived elsewhere. Open both before calling one an outdated copy.
+- **Same name ≠ same skill.** A skill in `~/.agents/skills/` can share its name with an unrelated one elsewhere. Open both before calling one an outdated copy.
 
 Also note `find ~/.claude/skills -maxdepth 2` does not follow symlinks — use `-L` or `readlink -f` first.
 
@@ -61,7 +61,7 @@ SOUL을 참고하는 것은 게시 승인이 아니다. 게시 여부는 아래 
 
 ## Never print secrets
 
-Never `cat` / `Read` a secret file — `.env`, `.env.local`, `.dev.vars`, `.dev.vars.local`. **A masking `sed` is not an exception**: an incomplete pattern leaks the real value into the transcript, and once it is in the log, rotation is the only remedy. This happened on 2026-07-11 (`DATABASE_URL` for prod, AWS/R2 keys, `BETTER_AUTH_SECRET`, `APPLE_CLIENT_SECRET`, `GA4_SA_PRIVATE_KEY`).
+Never `cat` / `Read` a secret file — `.env`, `.env.local`, `.dev.vars`, `.dev.vars.local`. **A masking `sed` is not an exception**: an incomplete pattern leaks the real value into the transcript, and once it is in the log, rotation is the only remedy.
 
 Work without reading the values instead:
 - Counting or listing keys: `grep -c`, `grep -oE '^[A-Z_]+='`.
@@ -74,7 +74,7 @@ For anything that costs money (Cloudflare Images transformations, paid API calls
 
 When an extra target appears, keep the order: (1) confirm from the code that a real consumer exists, (2) compute the cost, (3) report and get approval — then bake. "Completeness" and "while we're at it" are not reasons. Report the remainder as a list instead.
 
-Why this is a hard rule: on 2026-08-04 an approved avif backfill (13,401 transforms) silently grew by 9,649 webp/video-thumbnail transforms ($4.8). Most of it was dead spend — the web `<picture>` serves `<source type="image/avif">` with a webp `<img>` fallback, so avif-capable browsers never request webp at all. Images bills per unique transformation at request time and deleting the output refunds nothing.
+Why this is a hard rule: Images bills per unique transformation at request time, and deleting the output refunds nothing. A format no client requests is pure spend — the web `<picture>` serves `<source type="image/avif">` with a webp `<img>` fallback, so avif-capable browsers never request webp.
 
 ## Do not touch the git remote
 

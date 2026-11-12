@@ -1,6 +1,6 @@
 ---
 name: write-worklog
-description: Analyzes a Claude Code development session (the current in-context conversation, or a transcript file you point it at) and writes a structured Korean engineering work log to ~/Desktop/worklog/YYYY-MM-DD.md — capturing decisions and trade-offs, implementations with rationale, recall-optimized concept explanations, debugging narratives (symptom→hypothesis→investigation→root cause→fix), and the causal flow between them, with inline git commit references. Use when the user asks to document, summarize, or log a dev session. Triggers on Korean phrases like "워크로그 작성해줘", "워크로그 써줘", "이 세션 문서화해줘", "세션 정리해줘", "작업 로그 남겨줘", "오늘 작업 기록해줘", and English like "write-worklog", "write a worklog", "document this session".
+description: Analyzes a Claude Code development session (the current in-context conversation, or a transcript file you point it at) and writes a structured Korean engineering work log to ~/Desktop/worklog/YYYY-MM-DD.md — capturing decisions and trade-offs, implementations with rationale, recall-optimized concept explanations, debugging narratives (symptom→hypothesis→investigation→root cause→fix), and the causal flow between them, with inline git commit references. Use when the user asks to document, summarize, or log a dev session. Triggers on requests, in Korean or English, to write a worklog or document the session (워크로그, 세션 정리, 작업 기록).
 ---
 
 # Write Worklog
@@ -58,7 +58,6 @@ a git repo, the commit section comes back empty — proceed without commit refs.
 **Read `references/worklog-structure.md`.** The output-location rules, document
 skeleton, commit-reference format, and per-section how-to + quality bar
 (decision / implementation / concept / debugging / narrative) all live there.
-Skipping it means missing the quality bar.
 
 ### 3. Analyze the session — extract 5 elements
 Sweep the session and keep only what carries meaning (not every line is
@@ -89,10 +88,8 @@ Format is structure doc §3. Do not cite unrelated or pre-session commits.
 - **MODE=append**: do **not** Read the whole existing file and Write it back —
   on a file that has grown to hundreds of lines, re-emitting all of it inside
   one Write call takes minutes with no visible progress, reads as a hung/broken
-  skill, and invites the user to interrupt before it ever finishes (observed:
-  a 500+ line file caused a multi-minute stall and the append was lost after
-  repeated interrupts). Instead, do a **true append that never touches existing
-  bytes**:
+  skill, and invites the user to interrupt before it ever finishes. Instead, do
+  a **true append that never touches existing bytes**:
   1. `Write` the new session block ONLY (starting with `\n\n---\n\n`, then the
      `##` heading) to a scratch file, e.g.
      `<scratchpad>/worklog_session_append.md`.

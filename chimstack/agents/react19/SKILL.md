@@ -5,11 +5,11 @@ description: React 19 patterns and React Compiler guidelines. Covers auto-memoiz
 
 # React 19 + React Compiler Guidelines
 
-## The Rules of React — Non-Negotiable
+## The Rules of React
 
-React Compiler works **only** when your code follows the [Rules of React](https://react.dev/reference/rules). If a component violates these rules, the compiler silently skips it and you lose all optimization benefits. Treat these rules as hard requirements, not suggestions.
+React Compiler works **only** when your code follows the [Rules of React](https://react.dev/reference/rules). If a component violates these rules, the compiler silently skips it and you lose all optimization benefits.
 
-You MUST read and follow the official rules before writing any React code:
+Follow the official rules:
 
 - [Components and Hooks Must Be Pure](https://react.dev/reference/rules/components-and-hooks-must-be-pure)
 - [React Calls Components and Hooks](https://react.dev/reference/rules/react-calls-components-and-hooks)
