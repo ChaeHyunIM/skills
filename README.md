@@ -77,6 +77,18 @@ ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
 - `~/.claude/skills/<이름>` 은 `../../.agents/skills/<이름>` 상대 심링크다. Claude 전용은 `chimstack/claude/<이름>` 을 직접 가리킨다.
 - `~/.codex/skills/<이름>` 은 Codex 전용만 `chimstack/codex/<이름>` 을 직접 가리킨다. 중립 스킬은 Codex 가 `~/.agents/skills` 에서 읽는다.
 
+### 권장 도구
+
+chimstack 스킬이 실행하는 명령줄 도구다. 스킬은 없는 도구를 새로 설치하지 않으므로 사람이 미리 깔아 둔다.
+
+| 도구 | 쓰는 곳 | 설치 |
+|---|---|---|
+| `gh` (로그인까지) | `write-pr` PR 저장·기록물 첨부, `agent-loop` 검증 커밋 확인 | `brew install gh` → `gh auth login` |
+| ImageMagick | `write-pr` PR 이미지에 번호·화살표 표시 | `brew install imagemagick` |
+| Node | `write-pr` 이미지 표시 스크립트 | nvm 등으로 설치 |
+| `pnpm` | `write-pr` call tree 추출(`calldiff`) | `brew install pnpm` |
+| `python3` | `write-worklog`, `site-hub` | macOS 기본 |
+
 ## 스킬을 새로 만들 때
 
 정본이 기본값이다. `chimstack/agents/<이름>/SKILL.md` 로 만들고 `~/.agents/skills/<이름>` 에 심링크를 건다.
