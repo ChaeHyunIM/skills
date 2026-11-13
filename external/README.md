@@ -14,7 +14,7 @@
 - **스킬**은 제공사의 스킬 레포를 `npx skills`로 받는다. `~/.agents/skills`에 한 벌만 두고 두 런타임이 같이 쓴다.
 - **MCP**는 계정 단위 커넥터가 있으면 그쪽을 쓴다. Claude는 claude.ai 커넥터가 웹·데스크톱·클라우드·로컬에 모두 따라온다.
   Codex는 클라우드 작업에서 ChatGPT 앱(커넥터)이 동작하지 않아서, 제공사 안내대로 `codex mcp add`로 로컬에 등록한다.
-- **플러그인**은 스킬과 MCP 말고 다른 것이 있을 때만 쓴다. 예를 들어 Expo 플러그인에는 훅이 들어 있다.
+- **플러그인**은 서비스별 배포 구조에 맞춰 필요한 경우에 쓴다. Expo와 Sentry는 공식 배포본에서 스킬만 받는다.
 
 ## `skills` CLI
 
@@ -28,6 +28,8 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | 출처 | 고른 스킬 |
 |---|---|
 | [emilkowalski/skill](https://github.com/emilkowalski/skill) | 전부 (`--skill '*'`) |
+| [expo/skills](https://github.com/expo/skills/tree/main/plugins/expo/skills) | 기본 Expo 스킬 전부. Claude Code·Codex 공용으로 받는다 (아래 Expo 절) |
+| [getsentry/agent-plugin](https://github.com/getsentry/agent-plugin) | 참고 자료가 포함된 스킬 전부. Claude Code·Codex 공용으로 받는다 (아래 Sentry 절) |
 | [planetscale/skills](https://github.com/planetscale/skills) | 전부. 공식 README대로 `npx skills add planetscale/skills -g -y` |
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
 | [cloudflare/skills](https://github.com/cloudflare/skills) | 전부. Codex에만 받는다 (아래 Cloudflare 절) |
@@ -89,24 +91,55 @@ rex skill status     # 설치 상태 확인
 
 | 마켓플레이스 | 플러그인 |
 |---|---|
-| [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | figma, typescript-lsp |
+| [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | typescript-lsp |
 
 ```
 /plugin marketplace add anthropics/claude-plugins-official
-/plugin install figma@claude-plugins-official
 /plugin install typescript-lsp@claude-plugins-official
 ```
 
 **Codex** — [dotfiles](https://github.com/ChaeHyunIM/dotfiles)의 `codex/config.toml`
 
-| 마켓플레이스 | 플러그인 |
-|---|---|
-| [expo/skills](https://github.com/expo/skills) | expo |
-| [getsentry/plugin-codex](https://github.com/getsentry/plugin-codex) | sentry |
+Expo·Sentry는 플러그인으로 설치하지 않고 아래 공용 스킬을 쓴다.
 
-Expo 플러그인의 `expo-animation`은 Emil Kowalski와 같이 만든 스킬이라 위 emilkowalski의 `animate-expo`와 내용이 같다.
-Claude에는 Expo 플러그인이 없으니 `animate-expo`를 그대로 쓰고, Codex에서만 같은 설정 파일의 `[[skills.config]]`로
-`~/.agents/skills/animate-expo/SKILL.md`를 끈다.
+### Sentry
+
+정본은 [getsentry/sentry-for-ai](https://github.com/getsentry/sentry-for-ai)이고, 설치 출처는 공식 범용 배포본
+[getsentry/agent-plugin](https://github.com/getsentry/agent-plugin)이다. 빌드가 공통 참고 자료를 각 스킬에 포함하므로
+정본의 스킬 폴더만 복사하지 않는다. 배포본에서 스킬만 받아 두 런타임이 공유한다.
+
+```bash
+npx skills add getsentry/agent-plugin -g -y -a claude-code codex --skill '*'
+```
+
+[공식 Sentry MCP](https://mcp.sentry.dev/)는 Claude가 claude.ai 커넥터로 쓰고, Codex에만 로컬로 등록한다.
+Claude에 같은 주소를 직접 등록하면 그쪽이 우선해서 claude.ai 커넥터가 가려지므로 등록하지 않는다.
+
+```bash
+codex mcp add sentry --url https://mcp.sentry.dev/mcp
+codex mcp login sentry
+```
+
+### Expo
+
+[공식 원본](https://github.com/expo/skills)의 `plugins/expo/skills`에서 기본 스킬만 받는다. 실험용 플러그인은 제외한다.
+`~/.agents/skills`에 한 벌 설치하고 Claude Code는 링크로, Codex는 공용 경로에서 읽는다. 양쪽 Expo 플러그인은 설치하지 않는다.
+
+```bash
+npx skills add https://github.com/expo/skills/tree/main/plugins/expo/skills -g -y -a claude-code codex --skill '*'
+```
+
+[공식 Expo MCP](https://docs.expo.dev/mcp/)도 Sentry와 같이 Claude는 claude.ai 커넥터로 쓰고, Codex에만 로컬로 등록한다.
+플러그인 훅은 설치하지 않는다.
+
+```bash
+codex mcp add expo --url https://mcp.expo.dev/mcp
+codex mcp login expo
+```
+
+Expo의 `expo-animation`은 Emil Kowalski와 같이 만든 스킬이라 위 emilkowalski의 `animate-expo`와 겹친다.
+두 런타임 모두 `expo-animation`을 쓰고 `animate-expo`는 끈다. Claude는 `~/.claude/skills/animate-expo` 링크를 두지 않고,
+Codex는 같은 설정 파일의 `[[skills.config]]`로 `~/.agents/skills/animate-expo/SKILL.md`를 끈다.
 
 ### PlanetScale
 
