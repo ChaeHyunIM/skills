@@ -1,6 +1,6 @@
 interface:
   display_name: "Land"
-  short_description: "이번에 지정하거나 확인한 티켓의 PR을 검사한 뒤 병합합니다."
-  default_prompt: "$land로 이번에 내가 지정하거나 확인한 티켓의 PR을 병합해 줘."
+  short_description: "지정하거나 확인한 PR에 최신 base를 반영하고 검사한 뒤 병합합니다."
+  default_prompt: "$land로 이번에 내가 지정하거나 확인한 PR을 병합해 줘."
 policy:
   allow_implicit_invocation: false
