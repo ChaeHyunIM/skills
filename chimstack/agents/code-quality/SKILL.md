@@ -5,24 +5,54 @@ description: 변경 코드에 맞는 전문 스킬을 골라 적용한다. imple
 
 # code-quality
 
-프로젝트의 의존성·설정과 변경 코드를 확인하고, 아래 조건에 해당하는 스킬을 모두 읽어 검토 기준으로 적용한다. 스킬의 참고 문서는 변경에 필요한 부분만 읽는다.
+변경 코드가 걸치는 분야를 보고, 프로젝트가 쓰는 스택에 맞는 스킬을 읽어 검토 기준으로 적용한다.
 
-## 공통
+## 순서
 
-| 검토할 코드 | 적용할 스킬 |
-|---|---|
-| PostgreSQL 스키마·쿼리·트랜잭션 | [postgres](~/.agents/skills/postgres/SKILL.md) |
-| React 컴포넌트·훅 | [react](../react/SKILL.md) |
-| TanStack Query의 조회·캐시·mutation·낙관적 갱신 | [tanstack-query-best-practices](~/.agents/skills/tanstack-query-best-practices/SKILL.md) |
-| HTML·CSS·브라우저 API | [modern-web-guidance](~/.agents/skills/modern-web-guidance/SKILL.md) |
-| 웹 UI의 폼·키보드 조작·접근성·인터랙션 | [web-design-guidelines](~/.agents/skills/web-design-guidelines/SKILL.md) |
-| Turborepo 태스크·캐시·환경변수·패키지 경계 | [turborepo](~/.agents/skills/turborepo/SKILL.md) |
+1. **변경 코드의 분야를 정한다.** diff가 「분야별 스킬」의 어느 분야에 걸치는지 본다. 여러 분야에 걸칠 수 있다.
+2. **프로젝트의 스택을 확인한다.** 변경 코드가 속한 패키지의 의존성과 설정 파일을 본다. 표에서 「스택」이 맞는 행만 적용한다.
+3. **표에 없는 스택을 찾는다.** 「표에 없는 스택」에 따라 세션의 스킬에서 더 고른다.
+4. **프로젝트가 정한 기준을 더한다.** 「프로젝트가 정한 기준」을 따른다.
+5. **고른 스킬을 읽고 검토 기준으로 적용한다.** 스킬이 요구하는 선행 스킬도 읽는다. 참고 문서는 변경에 필요한 부분만 읽는다. 설치·배포 같은 별도 작업 절차는 시작하지 않는다.
 
-## 기술별 추가 적용
+## 분야별 스킬
 
-현재 세션에서 사용 가능한 스킬의 이름과 description을 살펴, 프로젝트의 기술스택·설정과 변경 내용에 해당하는 전문 스킬을 추가로 선택한다. 라이브러리뿐 아니라 코드에 사용된 패턴도 선택 근거로 삼는다.
+프로젝트에 그 스택이 있을 때만 해당 스킬을 참고한다.
 
-선택한 스킬을 공통 스킬과 함께 읽고 검토 기준으로 적용한다. 스킬이 요구하는 선행 스킬도 읽으며, 참고 문서는 변경에 필요한 부분만 읽는다. 설치·배포 등 별도 작업 절차는 시작하지 않는다.
+### 프런트엔드
+
+| 스택 | 검토할 코드 | 스킬 |
+|---|---|---|
+| React (`react` 의존성) | 컴포넌트·훅 | `react` |
+| TanStack Query (`@tanstack/react-query` 의존성) | 조회·캐시·mutation·낙관적 갱신 | `tanstack-query-best-practices` |
+| 브라우저에서 도는 웹 UI | HTML·CSS·브라우저 API | `modern-web-guidance` |
+| 브라우저에서 도는 웹 UI | 폼·키보드 조작·접근성·인터랙션 | `web-design-guidelines` |
+
+### 데이터베이스
+
+| 스택 | 검토할 코드 | 스킬 |
+|---|---|---|
+| PostgreSQL | 스키마·쿼리·트랜잭션 | `postgres` |
+
+### 빌드·저장소 구조
+
+| 스택 | 검토할 코드 | 스킬 |
+|---|---|---|
+| Turborepo (`turbo.json`) | 태스크·캐시·환경변수·패키지 경계 | `turborepo` |
+
+## 표에 없는 스택
+
+표는 자주 쓰는 스택만 담는다. 현재 세션에서 사용 가능한 스킬의 이름과 description을 살펴, 프로젝트의 스택·설정과 변경 내용에 해당하는 전문 스킬을 더 고른다. 라이브러리뿐 아니라 코드에 사용된 패턴도 선택 근거로 삼는다.
+
+## 프로젝트가 정한 기준
+
+프로젝트 지침(`AGENTS.md`, `CLAUDE.md`)이 특정 코드에 읽을 스킬이나 문서를 정해 두었으면 함께 적용한다. 표와 겹치면 프로젝트 지침을 따른다.
+
+## 스킬을 찾는 곳
+
+표의 스킬은 이름으로 찾는다. 프로젝트의 `.agents/skills/<이름>/SKILL.md`를 먼저 보고, 없으면 `~/.agents/skills/<이름>/SKILL.md`를 본다.
+
+스택은 맞는데 스킬이 어디에도 없으면 건너뛰고, 기록에 그 스킬을 적용하지 못했다고 적는다. 스킬을 설치하지 않는다.
 
 ## 기록
 
