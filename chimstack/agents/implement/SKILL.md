@@ -13,7 +13,7 @@ disable-model-invocation: true
 - 완료 조건 초안을 쓸 때: [완료 조건 작성 기준](../agent-loop/references/ticket-criteria.md)
 - worktree를 준비하거나 커밋할 때: [작업 환경](../agent-loop/references/workspace.md)
 - 구현·검증하고 PR을 준비할 때: [구현하고 PR 준비하기](../agent-loop/references/implementation.md)
-- 코드 품질을 확인할 때: [code-quality](../code-quality/SKILL.md)
+- 코드를 쓰기 전과 코드 품질을 확인할 때: [code-quality](../code-quality/SKILL.md)
 - 검증하고 PR에 기록할 때: [검증과 기록 방법](../agent-loop/references/verification.md)
 - PR 본문을 쓸 때: [write-pr](../write-pr/SKILL.md)
 

@@ -1,8 +1,3 @@
----
-name: react
-description: Code-structure guidelines for writing, reviewing, or refactoring React components and hooks. Decides where a value lives (state, computed during render, ref), where logic lives (render, event handler, Effect), whether a useEffect is needed at all, and whether to memoize. Applies to every React version with hooks (16.8+), and adds rules depending on whether the project uses React Compiler and whether it is on React 19 or later. Use when writing, reviewing, or refactoring any React or React Native component or hook — useState, useEffect, useMemo, useCallback, derived state, state synchronization, refs, context, forwardRef, React Compiler.
----
-
 # React
 
 Code-structure guidelines for React components and hooks. They apply to every version since hooks were introduced in 16.8. Class components are out of scope.
@@ -15,7 +10,7 @@ Which sections apply depends on three things. Check them before writing or revie
 |---|---|---|
 | `react` version | `package.json` of the package that owns the changed code. In a monorepo, also check the workspace catalog | Whether "React 19 and Later" applies, and which APIs are available |
 | Whether React Compiler is on | A `babel-plugin-react-compiler` dependency, or the `reactCompiler` option in the framework config | Which side of "Memoization" to follow |
-| `eslint-plugin-react-hooks` version and enabled rules | ESLint or Oxlint config | How much of [references/rules-of-react.md](references/rules-of-react.md) lint already catches |
+| `eslint-plugin-react-hooks` version and enabled rules | ESLint or Oxlint config | How much of [rules-of-react.md](rules-of-react.md) lint already catches |
 
 React Compiler is not tied to React 19. Projects on 17 and 18 can use it too, so read the config instead of inferring from the version. On 17 and 18 it also needs the `react-compiler-runtime` package and the compiler's `target` option set to `'17'` or `'18'`.
 
@@ -30,7 +25,7 @@ React Compiler is not tied to React 19. Projects on 17 and 18 can use it too, so
 - **Define components and hooks at module level.** A component defined inside another component is a new component on every render, so its state resets.
 - **Never call a component as a function.** Pass it to JSX.
 
-The source is the [Rules of React](https://react.dev/reference/rules). [references/rules-of-react.md](references/rules-of-react.md) maps them to lint rules.
+The source is the [Rules of React](https://react.dev/reference/rules). [rules-of-react.md](rules-of-react.md) maps them to lint rules.
 
 ### Where Does This Value Live?
 
@@ -84,7 +79,7 @@ When writing an Effect:
 - **It must behave correctly when run twice.** Strict Mode in 18 and later re-runs Effects once right after mount in development.
 - **One Effect handles one synchronization.** Do not put unrelated work in the same Effect.
 
-Code for each case is in [references/effects.md](references/effects.md).
+Code for each case is in [effects.md](effects.md).
 
 ### Memoization
 

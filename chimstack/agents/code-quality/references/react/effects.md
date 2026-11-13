@@ -21,7 +21,7 @@ Filtering and sorting a list are the same. Compute during render.
 const visibleTodos = todos.filter((todo) => matchesFilter(todo, filter));
 ```
 
-When the calculation is slow, follow "Memoization" in SKILL.md. With React Compiler, leave it as is. Without it, measure first, then wrap it in `useMemo`.
+When the calculation is slow, follow "Memoization" in [react.md](react.md). With React Compiler, leave it as is. Without it, measure first, then wrap it in `useMemo`.
 
 ## 2. Resetting All State When a Prop Changes
 
