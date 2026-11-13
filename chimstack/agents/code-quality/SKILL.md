@@ -12,15 +12,11 @@ description: 변경 코드에 맞는 전문 스킬을 골라 적용한다. imple
 | 검토할 코드 | 적용할 스킬 |
 |---|---|
 | PostgreSQL 스키마·쿼리·트랜잭션 | [postgres](~/.agents/skills/postgres/SKILL.md) |
-| React 19 컴포넌트·훅 | [react19](../react19/SKILL.md) |
-| useEffect가 포함된 컴포넌트·훅, 파생 상태·상태 동기화 | [react-useeffect](~/.agents/skills/react-useeffect/SKILL.md) |
+| React 컴포넌트·훅 | [react](../react/SKILL.md) |
 | TanStack Query의 조회·캐시·mutation·낙관적 갱신 | [tanstack-query-best-practices](~/.agents/skills/tanstack-query-best-practices/SKILL.md) |
 | HTML·CSS·브라우저 API | [modern-web-guidance](~/.agents/skills/modern-web-guidance/SKILL.md) |
 | 웹 UI의 폼·키보드 조작·접근성·인터랙션 | [web-design-guidelines](~/.agents/skills/web-design-guidelines/SKILL.md) |
 | Turborepo 태스크·캐시·환경변수·패키지 경계 | [turborepo](~/.agents/skills/turborepo/SKILL.md) |
-
-useEffect가 있으면 react-useeffect를 반드시 함께 적용한다.
-React Compiler 관련 기준은 프로젝트에서 Compiler를 사용하는지 확인하고 적용한다.
 
 ## 기술별 추가 적용
 

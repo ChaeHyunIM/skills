@@ -32,7 +32,6 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [planetscale/database-skills](https://github.com/planetscale/database-skills) | postgres |
 | [mobbin/skills](https://github.com/mobbin/skills) | 전부. 공식 README대로 `npx skills add mobbin/skills -g -y`. MCP는 Claude가 claude.ai 커넥터, Codex가 `codex mcp add`로 붙인다 |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
-| [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | react-useeffect |
 | [deckardger/tanstack-agent-skills](https://github.com/deckardger/tanstack-agent-skills) | tanstack-query-best-practices |
 | [vercel/turborepo](https://github.com/vercel/turborepo) | turborepo |
 | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines |
@@ -60,7 +59,7 @@ npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintai
 
 아래 스킬은 `chimstack/` 스킬이 `~/.agents/skills/<이름>/SKILL.md`로 직접 읽는다. 지우면 그쪽이 깨진다.
 
-- `code-quality` → postgres, react-useeffect, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, turborepo
+- `code-quality` → postgres, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, turborepo
 - `write-pr` → show-me
 
 ## Rex
