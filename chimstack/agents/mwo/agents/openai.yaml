@@ -1,0 +1,6 @@
+interface:
+  display_name: "Mwo"
+  short_description: "직전 답변이 이해되지 않을 때 놓친 전제를 복원해 다시 설명합니다."
+  default_prompt: "$mwo로 직전 답변을 다시 설명해 줘."
+policy:
+  allow_implicit_invocation: false
