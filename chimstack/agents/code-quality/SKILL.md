@@ -27,6 +27,9 @@ description: 변경 코드에 맞는 전문 스킬을 골라 적용한다. imple
 | TanStack Query (`@tanstack/react-query` 의존성) | 조회·캐시·mutation·낙관적 갱신 | `tanstack-query-best-practices` |
 | 브라우저에서 도는 웹 UI | HTML·CSS·브라우저 API | `modern-web-guidance` |
 | 브라우저에서 도는 웹 UI | 폼·키보드 조작·접근성·인터랙션 | `web-design-guidelines` |
+| 브라우저에서 도는 React 웹 UI | 렌더링·번들·데이터 로딩 성능 | `vercel-react-best-practices` |
+
+`vercel-react-best-practices`는 성능 규칙이다. 메모이제이션이나 버전별 API에서 `react`와 다르게 말하면 `react`를 따른다. Next.js 전용 규칙은 Next.js 프로젝트에만 적용한다.
 
 ### 데이터베이스
 

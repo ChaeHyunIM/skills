@@ -34,7 +34,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
 | [deckardger/tanstack-agent-skills](https://github.com/deckardger/tanstack-agent-skills) | tanstack-query-best-practices |
 | [vercel/turborepo](https://github.com/vercel/turborepo) | turborepo |
-| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines |
+| [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines, vercel-react-best-practices |
 | [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) | modern-web-guidance |
 | [mattpocock/skills](https://github.com/mattpocock/skills) | handoff |
 | [humanlayer/skills](https://github.com/humanlayer/skills) | show-me |
@@ -60,7 +60,7 @@ npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintai
 아래 스킬은 `chimstack/` 스킬이 읽는다.
 
 - `write-pr` → show-me. `~/.agents/skills/show-me/SKILL.md`로 직접 읽으므로 지우면 깨진다.
-- `code-quality` → postgres, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, turborepo.
+- `code-quality` → postgres, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, vercel-react-best-practices, turborepo.
   이름으로 찾고, 프로젝트의 `.agents/skills/`를 먼저 본 뒤 `~/.agents/skills/`를 본다. 프로젝트에 그 스택이 있는데 스킬이
   어디에도 없으면 그 기준 없이 검토가 끝난다.
 
