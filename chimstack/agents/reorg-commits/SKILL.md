@@ -1,10 +1,6 @@
 ---
 name: reorg-commits
-description: >
-  Reorganize messy git commits into cohesive, well-grouped commits by concern or feature.
-  Takes a start and end commit hash, analyzes all changes, groups files by concern,
-  and re-commits in a clean order inside an isolated worktree.
-  Use when asked to reorganize or restructure a linear range of commits by concern.
+description: Use when asked to regroup, split, or clean up a range of commits between two hashes by concern (커밋 재구성).
 ---
 
 # Reorg Commits

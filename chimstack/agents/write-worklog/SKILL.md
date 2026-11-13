@@ -1,6 +1,6 @@
 ---
 name: write-worklog
-description: Analyzes the current development session in Claude Code or Codex (the in-context conversation) and writes a structured Korean engineering work log to ~/Desktop/worklog/YYYY-MM-DD.md — capturing decisions and trade-offs, implementations with rationale, recall-optimized concept explanations, debugging narratives (symptom→hypothesis→investigation→root cause→fix), and the causal flow between them, with inline git commit references. Use when the user asks to document, summarize, or log a dev session. Triggers on requests, in Korean or English, to write a worklog or document the session (워크로그, 세션 정리, 작업 기록).
+description: Use when the user asks to write a worklog or record the dev session in a log file (워크로그, 세션 정리, 작업 기록). Not for a session summary answered in chat.
 ---
 
 # Write Worklog

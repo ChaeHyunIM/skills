@@ -1,6 +1,6 @@
 ---
 name: workflow-tiering
-description: Assign model and effort per agent() call in a Workflow script, rating each stage on two independent axes instead of letting every stage inherit the session model. Use before writing or editing any Workflow tool script, before fanning out several subagents with the Agent tool, before /code-review generates its review workflow, and whenever a request involves orchestration ("write a workflow", "ultracode", "fan out agents", "모델 배분", "에이전트 분배", "워크플로우 짜줘").
+description: Use before writing or editing a Workflow tool script, before spawning several subagents with the Agent tool, and before /code-review generates its review workflow, to assign model and effort per agent ("ultracode", "모델 배분", "워크플로우 짜줘").
 ---
 
 # Workflow tiering

@@ -1,6 +1,6 @@
 ---
 name: comment-cleaner
-description: Clean up comments to match the project's comment rules — delete unnecessary comments, remove narrative comments that explain change history or patch rationale, and tidy the remaining comments so they describe only the current code structure. Never changes code logic; touches comments only. May run automatically when appropriate — after finishing an implementation, especially right before committing, or when changed code contains rule-violating comments (restating code, history narration, PR/issue references). Also callable directly as `/comment-cleaner [path]`; with no argument the target is the code files in the current working changes (git diff). Also triggers on Korean requests to clean up or tidy comments (주석 정리).
+description: Use right before committing changed code, when a diff adds comments that restate the code or narrate change history, patch rationale, or PR/issue references, or when asked to clean up comments (주석 정리).
 ---
 
 # comment-cleaner

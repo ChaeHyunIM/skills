@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: 코드를 작성하기 전과 검토할 때, 다루는 코드의 분야와 프로젝트 스택에 맞는 기준을 골라 적용한다. React 컴포넌트·훅, 데이터 조회·캐시, 웹 UI, 데이터베이스 스키마·쿼리, 모노레포 설정을 새로 쓰거나 고치거나 리뷰할 때 사용한다. implement·verify의 코드 품질 검증에도 사용한다.
+description: React·TanStack Query·PostgreSQL·Turborepo·웹 UI 코드를 작성하기 전과 리뷰할 때, 스택에 맞는 기준을 고르기 위해 사용한다. React 코드에서는 다른 React 스킬보다 먼저 읽는다.
 ---
 
 # code-quality
