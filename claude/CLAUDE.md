@@ -25,15 +25,6 @@ If a skill depends on **functionality that only exists in Claude Code**, create 
 - It calls a Claude Code built-in slash command like `/code-review`
 - It assumes Claude Code hooks, plugins, or `.claude/settings.json`
 
-In that case, leave a **TODO for other runtimes** at the bottom of SKILL.md. No need to port it now — just record what is blocking it.
-
-```markdown
-## TODO — other runtimes
-
-This skill lives in `chimstack/claude/` because it depends on <specific Claude-only capability>.
-How to substitute it in Codex or elsewhere is undecided.
-```
-
 `~/.agents/.skill-lock.json` holds the install records of external skills (machine state, not in the repo). Two pitfalls when reading this layout:
 
 - **`agents/openai.yaml` says nothing about Claude.** It is the portable-skill manifest other runtimes read (`interface`, `policy.allow_implicit_invocation`). Claude Code reads only `disable-model-invocation` in the SKILL.md frontmatter, so one folder can carry different policies per runtime. Never conclude "this is blocked in Claude" from that file.
