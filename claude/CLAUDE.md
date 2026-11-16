@@ -66,7 +66,3 @@ For anything that costs money (Cloudflare Images transformations, paid API calls
 When an extra target appears, keep the order: (1) confirm from the code that a real consumer exists, (2) compute the cost, (3) report and get approval — then bake. "Completeness" and "while we're at it" are not reasons. Report the remainder as a list instead.
 
 Why this is a hard rule: Images bills per unique transformation at request time, and deleting the output refunds nothing. A format no client requests is pure spend — the web `<picture>` serves `<source type="image/avif">` with a webp `<img>` fallback, so avif-capable browsers never request webp.
-
-## Do not touch the git remote
-
-Never rewrite a git remote URL, in particular not HTTPS → SSH. The user drives push/pull with lazygit. If a push fails, leave the remote alone and ask the user to push.
