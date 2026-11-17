@@ -14,7 +14,6 @@
 - **스킬**은 제공사의 스킬 레포를 `npx skills`로 받는다. `~/.agents/skills`에 한 벌만 두고 두 런타임이 같이 쓴다.
 - **MCP**는 계정 단위 커넥터가 있으면 그쪽을 쓴다. Claude는 claude.ai 커넥터가 웹·데스크톱·클라우드·로컬에 모두 따라온다.
   Codex는 클라우드 작업에서 ChatGPT 앱(커넥터)이 동작하지 않아서, 제공사 안내대로 `codex mcp add`로 로컬에 등록한다.
-- **플러그인**은 스킬과 MCP 말고 다른 것이 꼭 필요할 때만 쓴다.
 - **프로젝트 스택에 묶인 스킬·MCP**(Expo, Sentry, Cloudflare, PlanetScale 등)는 여기 적지 않는다. 쓰는 프로젝트의 README에 적는다.
 
 ## `skills` CLI
@@ -63,46 +62,3 @@ npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintai
   turborepo는 Turborepo를 쓰는 저장소(doko-monorepo)에 프로젝트 스킬로 받고, 여기서는 받지 않는다.
   이름으로 찾고, 프로젝트의 `.agents/skills/`를 먼저 본 뒤 `~/.agents/skills/`를 본다. 프로젝트에 그 스택이 있는데 스킬이
   어디에도 없으면 그 기준 없이 검토가 끝난다.
-
-## Rex
-
-[Rex](https://www.superlogical.com/rex/)는 `rex` 명령으로 스킬과 세션 시작 훅을 같이 깐다.
-스킬 파일에는 내용이 거의 없고, 쓸 때마다 `rex`에서 안내문을 받아 온다. 그래서 Rex만 업데이트하면 스킬 내용도 같이 바뀐다.
-
-```bash
-rex skill setup      # 이 머신에서 찾은 에이전트 전부에 스킬과 훅 설치. 다시 돌려도 안전하다
-rex skill status     # 설치 상태 확인
-```
-
-| 에이전트 | 스킬 | 훅 |
-|---|---|---|
-| Claude Code | `~/.claude/skills/rex` | `~/.claude/settings.json` |
-| Codex · OpenCode · Pi | `~/.agents/skills/rex` | Codex만 `~/.codex/hooks.json` |
-
-세션 이름을 작업에 맞게 붙이는 `--session-naming`은 쓰지 않는다.
-
-## 플러그인
-
-플러그인은 런타임이 설정 파일을 읽어 켜고 끈다. 여기에는 무엇을 쓰는지만 적고, 켜고 끄는 값은 각 설정 파일이 정본이다.
-
-**Claude Code** — `~/.claude/settings.json`의 `enabledPlugins`
-
-| 마켓플레이스 | 플러그인 |
-|---|---|
-| [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) | typescript-lsp |
-
-```
-/plugin marketplace add anthropics/claude-plugins-official
-/plugin install typescript-lsp@claude-plugins-official
-```
-
-**Codex** — [dotfiles](https://github.com/ChaeHyunIM/dotfiles)의 `codex/config.toml`
-
-따로 고른 플러그인은 없다.
-
-## 기록하지 않는 것
-
-도구가 직접 설치하고 갱신하는 것들이다.
-
-- `~/.claude/skills/synced/`, `~/.claude/plugins/synced/` — claude.ai가 동기화
-- `~/.codex/skills/.system/` — Codex 내장

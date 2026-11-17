@@ -24,7 +24,7 @@ codex/
 ```
 
 **internal 과 external** — 직접 만든 스킬만 `chimstack/` 에 둔다. 남이 만든 스킬은 파일을 들고 있지 않고
-`external/README.md` 에 출처와 설치 명령만 적는다. 받은 스킬은 `skills` CLI 나 플러그인이 설치·갱신하고,
+`external/README.md` 에 출처와 설치 명령만 적는다. 받은 스킬은 `skills` CLI 가 설치·갱신하고,
 설치 기록(`~/.agents/.skill-lock.json`)도 그 도구 몫이다.
 
 **chimstack 안에서 정본과 런타임 전용을 나누는 기준** — Workflow · Agent · Artifact 처럼 그 런타임에만 있는
