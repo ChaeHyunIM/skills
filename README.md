@@ -13,7 +13,6 @@ Claude Code · Codex 등 여러 코딩 에이전트가 읽는 글을 모은 저�
 chimstack/                      직접 만든 스킬 (internal)
   agents/                       런타임 중립 — 어느 에이전트에서도 돈다
   claude/                       Claude Code 전용 — Workflow · Agent · Artifact 에 의존
-  codex/                        Codex 전용
 external/
   README.md                     받아온 스킬의 출처·설치 명령 (파일은 두지 않는다)
 agents/
@@ -66,7 +65,7 @@ ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
 
 ```
 ~/skills/chimstack/agents 가 런타임 중립 스킬 정본이고,
-~/skills/chimstack/claude 와 ~/skills/chimstack/codex 는 각 런타임 전용이다.
+~/skills/chimstack/claude 는 Claude Code 전용이다.
 ~/skills/external/README.md 는 받아올 스킬 목록이다.
 받아올 스킬을 먼저 설치하고, chimstack 스킬은 지금 런타임이 스킬을 읽는 방식대로 링크해줘.
 ```
@@ -75,7 +74,7 @@ ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
 
 - `~/.agents/skills/` 는 실제 디렉터리다. 받아온 스킬은 실파일로, `chimstack/agents/<이름>` 은 스킬마다 절대 경로 심링크로 들어간다.
 - `~/.claude/skills/<이름>` 은 `../../.agents/skills/<이름>` 상대 심링크다. Claude 전용은 `chimstack/claude/<이름>` 을 직접 가리킨다.
-- `~/.codex/skills/<이름>` 은 Codex 전용만 `chimstack/codex/<이름>` 을 직접 가리킨다. 중립 스킬은 Codex 가 `~/.agents/skills` 에서 읽는다.
+- Codex 는 중립 스킬을 `~/.agents/skills` 에서 읽는다.
 
 ### 권장 도구
 
@@ -91,8 +90,7 @@ chimstack 스킬이 실행하는 명령줄 도구다. 스킬은 없는 도구를
 ## 스킬을 새로 만들 때
 
 정본이 기본값이다. `chimstack/agents/<이름>/SKILL.md` 로 만들고 `~/.agents/skills/<이름>` 에 심링크를 건다.
-런타임 전용 기능에 기대야만 `chimstack/claude/` 나 `chimstack/codex/` 로 보낸다. 전용으로 보냈다면 SKILL.md
-맨 아래에 다른 런타임에서 무엇이 막혔는지 한 줄 남긴다.
+Claude Code 전용 기능에 기대야만 `chimstack/claude/` 로 보낸다.
 
 남의 스킬을 받으면 파일을 여기 넣지 않고 `external/README.md` 에 출처와 고른 스킬을 적는다.
 

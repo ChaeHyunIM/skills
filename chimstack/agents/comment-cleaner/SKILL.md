@@ -11,7 +11,7 @@ Clean up comments to match the project rules. Do not change behavior — **comme
 
 ## Scope
 
-- `/comment-cleaner <path>` → that file/directory.
+- A path argument → that file/directory.
 - No argument → code files (`.ts` / `.tsx`, etc.) in the current working changes (`git diff --name-only` + staged).
 
 ## Core principle: default to no comments
