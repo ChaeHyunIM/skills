@@ -33,7 +33,6 @@ npx skills update -g          # 받은 스킬 전부 갱신
 | [mobbin/skills](https://github.com/mobbin/skills) | 전부. 공식 README대로 `npx skills add mobbin/skills -g -y`. MCP는 Claude가 claude.ai 커넥터, Codex가 `codex mcp add`로 붙인다 |
 | [cursor/plugins](https://github.com/cursor/plugins) | create-verification-skill, maintain-verification-skill |
 | [deckardger/tanstack-agent-skills](https://github.com/deckardger/tanstack-agent-skills) | tanstack-query-best-practices |
-| [vercel/turborepo](https://github.com/vercel/turborepo) | turborepo |
 | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | web-design-guidelines, vercel-react-best-practices |
 | [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) | modern-web-guidance |
 | [mattpocock/skills](https://github.com/mattpocock/skills) | handoff |
@@ -61,6 +60,7 @@ npx skills add https://github.com/cursor/plugins/tree/main/pstack/skills/maintai
 
 - `write-pr` → show-me. `~/.agents/skills/show-me/SKILL.md`로 직접 읽으므로 지우면 깨진다.
 - `code-quality` → postgres, tanstack-query-best-practices, modern-web-guidance, web-design-guidelines, vercel-react-best-practices, turborepo.
+  turborepo는 Turborepo를 쓰는 저장소(doko-monorepo)에 프로젝트 스킬로 받고, 여기서는 받지 않는다.
   이름으로 찾고, 프로젝트의 `.agents/skills/`를 먼저 본 뒤 `~/.agents/skills/`를 본다. 프로젝트에 그 스택이 있는데 스킬이
   어디에도 없으면 그 기준 없이 검토가 끝난다.
 
