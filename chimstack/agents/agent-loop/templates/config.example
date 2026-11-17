@@ -1,4 +1,4 @@
-# <repo>/.claude/agent-loop/config — prepare-worktree.sh가 worktree를 준비할 때 읽는 설정.
+# <repo>/.agents/agent-loop/config — prepare-worktree.sh가 worktree를 준비할 때 읽는 설정.
 # Bash에서 source하는 파일이며 Git에 커밋한다. 비밀값은 같은 디렉터리의 .env.local에 둔다.
 # 스크립트가 읽는 변수만 넣는다. 검사 명령은 저장소 지침(AGENTS.md 등)에, 앱 실행 명령과 포트는
 # 프로젝트 검증 스킬(.agents/skills/verify-<app>/)에 적는다. 아래는 doko-monorepo의 설정 예시다.

@@ -40,7 +40,7 @@ class HelpersTest(unittest.TestCase):
         self.env["TEST_PR_JSON"] = str(self.root / "pr.json")
 
     def write_config(self, text, repo=None):
-        cfg = (repo or self.repo) / ".claude/agent-loop/config"
+        cfg = (repo or self.repo) / ".agents/agent-loop/config"
         cfg.parent.mkdir(parents=True, exist_ok=True)
         cfg.write_text(text)
 
@@ -50,7 +50,7 @@ class HelpersTest(unittest.TestCase):
 
     def commit(self, content, parents=()):
         blob = self.git("hash-object", "-w", "--stdin", input=content)
-        ignore = self.git("hash-object", "-w", "--stdin", input=".e2e/\n.claude/\n")
+        ignore = self.git("hash-object", "-w", "--stdin", input=".e2e/\n.agents/\n.claude/\n")
         tree = self.git("mktree", input=f"100644 blob {ignore}\t.gitignore\n100644 blob {blob}\tvalue.txt\n")
         args = ["commit-tree", tree]
         for parent in parents:
@@ -168,7 +168,7 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(self.script(LOOP / "scripts/check-worktree.sh", self.repo, self.v).returncode, 0)
 
     def test_hollow_worktree_and_wrong_head_are_rejected(self):
-        hollow = self.repo / ".claude/worktrees/hollow"
+        hollow = self.repo / ".agents/worktrees/hollow"
         hollow.mkdir(parents=True)
         self.assertEqual(self.script(LOOP / "scripts/check-worktree.sh", hollow).returncode, 3)
         self.assertEqual(self.script(LOOP / "scripts/check-worktree.sh", self.repo, self.a).returncode, 4)
@@ -176,10 +176,10 @@ class HelpersTest(unittest.TestCase):
     def test_slug_rejected_before_worktree_creation(self):
         result = self.script(LOOP / "scripts/prepare-worktree.sh", "한글")
         self.assertEqual(result.returncode, 64)
-        self.assertFalse((self.repo / ".claude/worktrees").exists())
+        self.assertFalse((self.repo / ".agents/worktrees").exists())
 
     def test_prepare_does_not_install_over_another_branch(self):
-        worktree = self.repo / ".claude/worktrees/good"
+        worktree = self.repo / ".agents/worktrees/good"
         self.git("worktree", "add", "-b", "another-task", str(worktree), self.v)
         result = self.script(LOOP / "scripts/prepare-worktree.sh", "good")
         self.assertEqual(result.returncode, 3, result.stderr)
@@ -192,7 +192,7 @@ class HelpersTest(unittest.TestCase):
         self.write_config('INSTALL_CMD="touch installed-here"\nCOPY_FROM_MAIN="apps/*/src/routeTree.gen.ts"\n')
         result = self.script(LOOP / "scripts/prepare-worktree.sh", "good", "pr")
         self.assertEqual(result.returncode, 0, result.stderr)
-        worktree = self.repo / ".claude/worktrees/good"
+        worktree = self.repo / ".agents/worktrees/good"
         self.assertEqual((worktree / "value.txt").read_text(), "verified\n")
         self.assertTrue((worktree / "installed-here").exists())
         self.assertEqual((worktree / "apps/web/src/routeTree.gen.ts").read_text(), "generated\n")
@@ -213,11 +213,11 @@ class HelpersTest(unittest.TestCase):
         self.assertIn("reusing", result.stdout)
 
     def test_prepare_without_config_creates_nothing(self):
-        (self.repo / ".claude/agent-loop/config").unlink()
+        (self.repo / ".agents/agent-loop/config").unlink()
         result = self.script(LOOP / "scripts/prepare-worktree.sh", "good", "pr")
         self.assertEqual(result.returncode, 78, result.stderr)
         self.assertIn("config.example", result.stderr)
-        self.assertFalse((self.repo / ".claude/worktrees").exists())
+        self.assertFalse((self.repo / ".agents/worktrees").exists())
 
     def test_prepare_skips_install_when_command_is_empty(self):
         self.write_config("COPY_FROM_MAIN=\n")
@@ -227,13 +227,30 @@ class HelpersTest(unittest.TestCase):
         self.assertNotIn("WARN", result.stderr)
 
     def test_worktree_without_config_falls_back_to_main_checkout(self):
-        worktree = self.repo / ".claude/worktrees/issue-12-good"
+        worktree = self.repo / ".agents/worktrees/issue-12-good"
         self.git("worktree", "add", "-b", "agent/issue-12-good", str(worktree), self.v)
         self.write_config('INSTALL_CMD="from-main"\n')
         loader = LOOP / "scripts/load-config.sh"
         result = subprocess.run(["bash", "-c", f'. "{loader}" && agent_loop_load_config . && printf %s "$INSTALL_CMD"'],
                                 cwd=worktree, text=True, capture_output=True, env=self.env)
         self.assertEqual((result.returncode, result.stdout), (0, "from-main"), result.stderr)
+
+    def test_legacy_config_location_still_loads(self):
+        (self.repo / ".agents/agent-loop/config").unlink()
+        legacy = self.repo / ".claude/agent-loop/config"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("INSTALL_CMD=\n")
+        result = self.script(LOOP / "scripts/prepare-worktree.sh", "good", "pr")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("legacy location", result.stderr)
+
+    def test_resume_reuses_a_worktree_at_the_legacy_path(self):
+        legacy = self.repo / ".claude/worktrees/good"
+        self.git("worktree", "add", "-b", "agent/good", str(legacy), self.v)
+        result = self.script(LOOP / "scripts/prepare-worktree.sh", "good")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"reusing: {legacy.resolve()}", result.stdout)
+        self.assertFalse((self.repo / ".agents/worktrees/good").exists())
 
 
 if __name__ == "__main__":

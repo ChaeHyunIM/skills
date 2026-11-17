@@ -1,6 +1,6 @@
 # 작업 폴더와 실행 명령
 
-worktree 설정은 저장소의 `.claude/agent-loop/config`에 둔다. `prepare-worktree.sh`가 source하는 파일이므로 스크립트에서 읽는 변수만 넣는다. config는 Git에 커밋하고, 비밀값은 같은 디렉터리의 `.env.local`에 둔다. 처음 만들 때는 [config.example](../templates/config.example)을 복사해 채운다.
+worktree 설정은 저장소의 `.agents/agent-loop/config`에 둔다. `prepare-worktree.sh`가 source하는 파일이므로 스크립트에서 읽는 변수만 넣는다. config는 Git에 커밋하고, 비밀값은 같은 디렉터리의 `.env.local`에 둔다. 처음 만들 때는 [config.example](../templates/config.example)을 복사해 채우고, `.gitignore`에 `.agents/worktrees/`와 `.agents/agent-loop/.env.local`을 추가한다. 예전 위치인 `.claude/agent-loop/config`도 읽지만 경고가 나오므로 옮긴다.
 
 | 키 | 뜻 |
 |---|---|
@@ -20,7 +20,7 @@ worktree 설정은 저장소의 `.claude/agent-loop/config`에 둔다. `prepare-
 
 ## worktree 준비와 유지
 
-- worktree는 `.claude/worktrees/<slug>`, 브랜치는 `agent/<slug>`를 쓴다. slug는 요구사항이나 티켓 제목의 뜻을 옮긴 짧은 영어 이름이며 ASCII 소문자·숫자·하이픈으로 만든다.
+- worktree는 `.agents/worktrees/<slug>`, 브랜치는 `agent/<slug>`를 쓴다. `agent/<slug>`가 이미 다른 경로(예전 `.claude/worktrees/<slug>` 등)에 체크아웃돼 있으면 그 worktree를 이어 쓴다. slug는 요구사항이나 티켓 제목의 뜻을 옮긴 짧은 영어 이름이며 ASCII 소문자·숫자·하이픈으로 만든다.
 - 기존 작업을 이어갈 때는 PR의 head 브랜치에서 `agent/` 뒤를 slug로 넘긴다. 예전 `agent/issue-12-foo` 브랜치는 `issue-12-foo`가 slug다.
 - 새 작업의 base는 사용자가 지정한 `--base`, 메인 체크아웃의 현재 로컬 브랜치 순서로 정한다. detached HEAD 상태이거나 다른 `agent/*` 작업 브랜치 위에서 시작해야 하면 대상을 확인한다. 메인 체크아웃의 커밋하지 않은 변경은 새 worktree에 포함되지 않는다고 알린다.
 - [prepare-worktree.sh](../scripts/prepare-worktree.sh)가 작업 폴더와 브랜치를 확인하고, `INSTALL_CMD`로 의존성을 설치한 뒤 `COPY_FROM_MAIN`에 지정한 파일을 복사한다. 기존 작업은 덮어쓰지 않는다. 빈 디렉터리에서 Git이 상위 저장소를 찾은 것은 아닌지 `--show-toplevel`로 확인한다.
@@ -29,11 +29,11 @@ worktree 설정은 저장소의 `.claude/agent-loop/config`에 둔다. `prepare-
 
 ## 커밋하기 전 검사
 
-코드를 바꾸고 커밋할 때는 `comment-cleaner` → 필요한 검사 → 커밋 → push 순서로 진행한다. 코드, 의존성, 환경이 같고 이미 통과한 검사는 재사용한다. 주석 정리나 base 반영으로 검사할 내용이 달라졌으면 관련 검사를 다시 한다.
+코드를 바꾸고 커밋할 때는 `comment-cleaner` → 필요한 검사 → 커밋 순서로 진행한다. 코드, 의존성, 환경이 같고 이미 통과한 검사는 재사용한다. 주석 정리나 base 반영으로 검사할 내용이 달라졌으면 관련 검사를 다시 한다.
 
 - 타입 체크, 테스트, 포맷, lint는 저장소 지침에 지정된 명령을 쓴다. 테스트 DB 준비 같은 사전 작업이 포함돼 있을 수 있으므로 `tsc`·`vitest`를 직접 호출하지 않는다.
 - 새 테스트는 같은 문제가 다시 생길 위험과 반복 사용할 가치가 있을 때 추가한다.
-- 커밋할 때는 Codex의 `Co-Authored-By` trailer 규칙을 지킨다. merge 충돌을 해결한 경우도 같은 절차를 따른다. 기존 merge 상태와 메시지를 보존하고 필요한 검사를 마친 뒤 커밋한다.
+- merge 충돌을 해결한 경우도 같은 절차를 따른다. 기존 merge 상태와 메시지를 보존하고 필요한 검사를 마친 뒤 커밋한다.
 
 ## 실행 환경
 

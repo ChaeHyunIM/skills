@@ -29,7 +29,7 @@ Create a raw git worktree without switching or modifying the user's current chec
 
 ```bash
 REORG_BRANCH="reorg/$(git branch --show-current)-$(date +%Y%m%d%H%M%S)"
-WORKTREE_DIR=".claude/worktrees/${REORG_BRANCH//\//-}"
+WORKTREE_DIR=".agents/worktrees/${REORG_BRANCH//\//-}"
 git worktree add "$WORKTREE_DIR" -b "$REORG_BRANCH" <start>^
 ```
 
@@ -81,7 +81,7 @@ git -C "$WORKTREE_DIR" rm <deleted-files-in-group>
 git -C "$WORKTREE_DIR" commit -m "<conventional commit message in Korean>"
 ```
 
-Follow the installed `commit` skill's message conventions when available. Otherwise use Korean Conventional Commits.
+Follow the repository's commit message conventions. If it has none, use Korean Conventional Commits.
 
 ### 6. Verify (Hard Gate)
 

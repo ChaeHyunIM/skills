@@ -11,8 +11,12 @@ CHECK="$LOOP/check-worktree.sh"
 
 ROOT=$(git rev-parse --show-toplevel)
 agent_loop_load_config "$ROOT"
-WT="$ROOT/.claude/worktrees/$SLUG"
 BRANCH="agent/$SLUG"
+WT="$ROOT/.agents/worktrees/$SLUG"
+# 이미 다른 경로(예전 .claude/worktrees 등)에 체크아웃된 작업 브랜치는 그 worktree를 이어 쓴다.
+EXISTING=$(git -C "$ROOT" worktree list --porcelain | awk -v b="branch refs/heads/$BRANCH" \
+  '/^worktree /{n++; wt=substr($0,10)} $0==b && n>1 {print wt; exit}')
+[ -n "$EXISTING" ] && WT=$EXISTING
 
 # 이름에 티켓 번호가 없어 slug가 겹칠 수 있다. 새 작업이 남의 worktree를 이어받지 않게 막는다.
 if [ -n "$BASE" ] && { [ -d "$WT" ] || git -C "$ROOT" show-ref --verify --quiet "refs/heads/$BRANCH"; }; then
