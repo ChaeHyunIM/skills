@@ -27,8 +27,8 @@ codex/
 `external/README.md` 에 출처와 설치 명령만 적는다. 받은 스킬은 `skills` CLI 가 설치·갱신하고,
 설치 기록(`~/.agents/.skill-lock.json`)도 그 도구 몫이다.
 
-**chimstack 안에서 정본과 런타임 전용을 나누는 기준** — Workflow · Agent · Artifact 처럼 그 런타임에만 있는
-기능에 기대면 전용이다. 옮겨봐야 다른 데서 안 돈다. 그 외에는 전부 `chimstack/agents/` 에 두고 여러 런타임이 같이 쓴다.
+**`agents/` 와 `claude/` 를 나누는 기준** — Workflow · Agent · Artifact 처럼 Claude Code 에만 있는 기능을 쓰면
+`chimstack/claude/` 에 둔다. 다른 런타임에서는 돌지 않기 때문이다. 나머지는 모두 `chimstack/agents/` 에 두고 여러 런타임이 같이 쓴다.
 
 `agents/SOUL.md`는 다른 사람에게 전달할 글을 쓸 때 읽는 공통 문서다. Slack·DM,
 이슈·PR 본문과 코멘트, 리뷰 답글, 공지, 복사해 보낼 초안에 적용한다. 별도 호출 스킬로
@@ -43,7 +43,7 @@ chimstack 스킬이 받아온 스킬을 읽을 때는 상대 경로가 아니라
 
 ## 설치
 
-설치 스크립트를 두지 않는다. 어느 경로에 어떤 이름으로 얹어야 그 런타임이 스킬을
+설치 스크립트를 두지 않는다. 어느 경로에 어떤 이름으로 링크해야 그 런타임이 스킬을
 인식하는지는 런타임마다 다르고, 버전이 오르면 또 바뀐다. 그 규칙을 스크립트에 박아 두면
 저장소가 런타임 변경을 계속 쫓아다녀야 한다.
 
@@ -60,10 +60,10 @@ ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
 `-f` 는 목적지를 말없이 지운다. 이미 뭔가 있는 머신이라면 `ls -la` 로 먼저 본다.
 심링크면 덮어써도 되고, 실파일이면 옮겨 두고 건다.
 
-**스킬은 그 런타임의 에이전트가 얹는다.** Claude Code 든 Codex 든 켜고 이렇게 말하면 된다.
+**스킬 링크는 각 런타임의 에이전트에게 맡긴다.** Claude Code 든 Codex 든 켜고 이렇게 말하면 된다.
 
 ```
-~/skills/chimstack/agents 가 런타임 중립 스킬 정본이고,
+~/skills/chimstack/agents 는 모든 런타임이 같이 쓰는 스킬이고,
 ~/skills/chimstack/claude 는 Claude Code 전용이다.
 ~/skills/external/README.md 는 받아올 스킬 목록이다.
 받아올 스킬을 먼저 설치하고, chimstack 스킬은 지금 런타임이 스킬을 읽는 방식대로 링크해줘.
@@ -88,13 +88,7 @@ chimstack 스킬이 실행하는 명령줄 도구다. 스킬은 없는 도구를
 
 ## 스킬을 새로 만들 때
 
-정본이 기본값이다. `chimstack/agents/<이름>/SKILL.md` 로 만들고 `~/.agents/skills/<이름>` 에 심링크를 건다.
+기본은 `chimstack/agents/<이름>/SKILL.md` 로 만들고 `~/.agents/skills/<이름>` 에 심링크를 거는 것이다.
 Claude Code 전용 기능에 기대야만 `chimstack/claude/` 로 보낸다.
 
 남의 스킬을 받으면 파일을 여기 넣지 않고 `external/README.md` 에 출처와 고른 스킬을 적는다.
-
-## dotfiles 와의 관계
-
-dotfiles 는 이제 스킬을 갖지 않는다. 두 저장소는 서로를 참조만 하고 서브모듈로 묶지 않는다 —
-새 머신에서는 둘 다 클론하고, `install.sh` 는 dotfiles 만 돌린다.
-스킬은 「설치」 절의 링크와 에이전트가 맡는다.
