@@ -19,7 +19,6 @@ agents/
   SOUL.md                       채현의 말투·소통 방식 공통 원본
 claude/
   CLAUDE.md                     Claude Code 전역 지침
-  output-styles/korean-output.md 한국어 출력 규칙
 codex/
   AGENTS.md                     Codex 전역 지침
 ```
@@ -34,7 +33,7 @@ codex/
 `agents/SOUL.md`는 다른 사람에게 전달할 글을 쓸 때 읽는 공통 문서다. Slack·DM,
 이슈·PR 본문과 코멘트, 리뷰 답글, 공지, 복사해 보낼 초안에 적용한다. 별도 호출 스킬로
 만들지 않고 Codex·Claude 전역 지침에서 연결해 전용 스킬 없이 작성할 때도 읽게 한다.
-한국어 출력 규칙도 이 파일을 직접 가리킨다. chimstack 스킬(`agent-loop` 계약, `write-pr`)은 이 파일을 가리키지 않고
+chimstack 스킬(`agent-loop` 계약, `write-pr`)은 이 파일을 가리키지 않고
 "사용자 지침이 지정한 말투 문서가 있으면 읽는다"고만 적는다. 그래서 다른 사람은 자기 말투 문서를 전역 지침에 연결해 쓴다.
 필수 양식과 사실관계를 보존하면서 말투에 적용하며, 게시 승인 규칙은 별도로 따른다.
 상대 링크는 심볼릭 링크를 따라간 원본 파일 위치를 기준으로 해석한다.
@@ -55,7 +54,6 @@ git clone https://github.com/ChaeHyunIM/skills.git ~/skills
 
 # 지침 문서
 ln -sfn ~/skills/claude/CLAUDE.md ~/.claude/CLAUDE.md
-ln -sfn ~/skills/claude/output-styles ~/.claude/output-styles
 ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
 ```
 
