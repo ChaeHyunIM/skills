@@ -1,3 +1,5 @@
+@../agents/AGENTS.md
+
 ## Orchestration
 
 Before writing or editing a Workflow script, and before spawning multiple subagents with the Agent tool, always invoke the `workflow-tiering` skill first. Assign `model` and `effort` per `agent()` call as two independent axes — never let the session model cascade to every stage.
@@ -31,24 +33,6 @@ If a skill depends on **functionality that only exists in Claude Code**, create 
 - **Same name ≠ same skill.** A skill in `~/.agents/skills/` can share its name with an unrelated one elsewhere. Open both before calling one an outdated copy.
 
 Also note `find ~/.claude/skills -maxdepth 2` does not follow symlinks — use `-L` or `readlink -f` first.
-
-**pstack verification skills.** `create-verification-skill` and `maintain-verification-skill` come unedited from cursor/plugins and say `.cursor/skills/`. Read every `.cursor/skills/` in them as `.agents/skills/` — project verification skills live in `.agents/skills/verify-<app>/`. Never patch the installed files; the next `npx skills update` would overwrite the patch.
-
-## 다른 사람에게 전달할 글은 SOUL을 참고한다
-
-Slack 메시지·DM, Linear·GitHub 이슈와 PR의 본문·코멘트, 리뷰 답글, 공지처럼 다른 사람에게 전달할 글을 작성하거나 다듬기 전에 [SOUL.md](../agents/SOUL.md)를 읽고 채현의 말투와 소통 방식을 적용한다. 실제 게시뿐 아니라 사용자가 복사해 보낼 초안에도 적용하며, 태그 유무로 적용 여부를 나누지 않는다. 전용 스킬 없이 도구로 직접 작성할 때도 같다.
-
-상대 경로는 이 지침 파일의 심볼릭 링크를 따라간 원본 위치를 기준으로 찾는다. SOUL 본문을 다른 지침에 복사하지 않는다. 말투와 문장 호흡은 SOUL을 따르되, 사실관계·불확실성·필수 양식과 프로젝트 용어는 유지한다. 코드 주석, 커밋, 에이전트 인계 문서, 개인 작업 로그에는 이 말투를 일괄 적용하지 않는다.
-
-SOUL을 참고하는 것은 게시 승인이 아니다. 게시 여부는 아래 승인 규칙과 현재 사용자의 지시를 따른다.
-
-## 사람이 읽는 코멘트는 승인받고 올린다
-
-**팀원이 최소 1명 태그되어 읽어야 하는 글이면** — Linear 이슈 코멘트, PR 코멘트, Slack 메시지 무엇이든 — 에이전트가 직접 게시하지 않는다. 초안만 내놓고 사람의 승인을 받은 뒤에 올린다.
-
-초안은 짧고 압축적으로, 사람이 말하듯 쓴다. 사용자가 그 문장을 그대로 복사해 쓸 수 없으면 실패한 초안이다. AI 가 쓴 티가 나는 긴 설명·라벨 나열·과잉 친절은 읽는 사람에게 해독 비용만 남긴다.
-
-사람 태그 없이 순수 기록용으로 남기는 개발 이슈 로그는 예외 — 에이전트가 그냥 작성해도 된다.
 
 ## Never print secrets
 

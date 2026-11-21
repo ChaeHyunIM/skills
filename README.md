@@ -16,11 +16,12 @@ chimstack/                      직접 만든 스킬 (internal)
 external/
   README.md                     받아온 스킬의 출처·설치 명령 (파일은 두지 않는다)
 agents/
+  AGENTS.md                     Codex·Claude Code 공통 전역 지침
   SOUL.md                       채현의 말투·소통 방식 공통 원본
 claude/
-  CLAUDE.md                     Claude Code 전역 지침
+  CLAUDE.md                     공통 지침을 불러오는 Claude Code 전역 지침
 codex/
-  AGENTS.md                     Codex 전역 지침
+  AGENTS.md                     기존 설치용 심볼릭 링크
 ```
 
 **internal 과 external** — 직접 만든 스킬만 `chimstack/` 에 둔다. 남이 만든 스킬은 파일을 들고 있지 않고
@@ -32,7 +33,7 @@ codex/
 
 `agents/SOUL.md`는 다른 사람에게 전달할 글을 쓸 때 읽는 공통 문서다. Slack·DM,
 이슈·PR 본문과 코멘트, 리뷰 답글, 공지, 복사해 보낼 초안에 적용한다. 별도 호출 스킬로
-만들지 않고 Codex·Claude 전역 지침에서 연결해 전용 스킬 없이 작성할 때도 읽게 한다.
+만들지 않고 공통 전역 지침인 `agents/AGENTS.md`에서 연결한다.
 chimstack 스킬(`agent-loop` 계약, `write-pr`)은 이 파일을 가리키지 않고
 "사용자 지침이 지정한 말투 문서가 있으면 읽는다"고만 적는다. 그래서 다른 사람은 자기 말투 문서를 전역 지침에 연결해 쓴다.
 필수 양식과 사실관계를 보존하면서 말투에 적용하며, 게시 승인 규칙은 별도로 따른다.
@@ -54,7 +55,7 @@ git clone https://github.com/ChaeHyunIM/skills.git ~/skills
 
 # 지침 문서
 ln -sfn ~/skills/claude/CLAUDE.md ~/.claude/CLAUDE.md
-ln -sfn ~/skills/codex/AGENTS.md ~/.codex/AGENTS.md
+ln -sfn ~/skills/agents/AGENTS.md ~/.codex/AGENTS.md
 ```
 
 `-f` 는 목적지를 말없이 지운다. 이미 뭔가 있는 머신이라면 `ls -la` 로 먼저 본다.

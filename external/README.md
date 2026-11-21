@@ -41,8 +41,7 @@ npx skills update -g          # 받은 스킬 전부 갱신
 ### cursor/plugins의 검증 스킬 두 개
 
 `create-verification-skill` · `maintain-verification-skill`은 원본을 고치지 않는다. 원본은 프로젝트 검증 스킬을
-`.cursor/skills/`에 만들고 찾지만 우리는 `.agents/skills/`를 쓴다. 이 차이는 전역 지침(`claude/CLAUDE.md`,
-`codex/AGENTS.md`)과 `agent-loop` 계약에서 `.cursor/skills/`를 `.agents/skills/`로 바꿔 읽게 해서 맞춘다.
+`.cursor/skills/`에 만들고 찾지만 우리는 `.agents/skills/`를 쓴다. 이 차이는 공통 전역 지침(`agents/AGENTS.md`)과 `agent-loop` 계약에서 `.cursor/skills/`를 `.agents/skills/`로 바꿔 읽게 해서 맞춘다.
 그래서 `npx skills update`로 그대로 갱신해도 된다.
 
 받을 때는 `pstack/skills/` 경로를 직접 준다. 이름만 주면 같은 레포의 Claude Code용 사본(`harness/pstack/claude-code/`)이
