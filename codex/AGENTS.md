@@ -26,3 +26,8 @@ SOUL을 참고하는 것은 게시 승인이 아니다. 게시 여부는 아래 
 ## Git 커밋
 
 - Codex가 커밋을 만들 때 커밋 메시지 끝에 `Co-Authored-By: Codex <codex@openai.com>` trailer를 추가한다.
+
+## rex에서 실행 중인 에이전트가 브라우저 사용을 요청받았을 때
+
+- 웹페이지 내용을 가져오는 데 웹 fetch로 충분하면 fetch를 사용한다.
+- Rex 탭 안에 페이지를 띄우거나 열린 브라우저를 조작할 때는 `rexweb skill`을 실행해 공식 가이드를 따른다.
